@@ -1,0 +1,6 @@
+[submodule "xqtools"]
+	path = xqtools
+	url = git@bitbucket.org:shrimp/xqtools.git
+[submodule "teensy/pjrc/libraries/FNET"]
+	path = teensy/pjrc/libraries/FNET
+	url = https://github.com/vjmuzik/FNET.git
