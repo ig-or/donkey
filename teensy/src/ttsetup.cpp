@@ -10,6 +10,7 @@
 //#include "eth.h"
 #include "logfile.h"
 #include "receiver.h"
+#include "motors.h"
 //#include "imu_alg.h"
 
 int ttSetup() {
@@ -34,6 +35,7 @@ int ttSetup() {
 	//setupMemsic();
 	//imuAlgInit();
 	receiverSetup();
+	msetup();
 	analogWrite(led1_pin, 0);
 	
 	return 0;

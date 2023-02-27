@@ -11,6 +11,7 @@
 #include "adcsetup.h"
 #include "memsic.h"
 #include "receiver.h"
+#include "motors.h"
 #include "ir.h"
 //#include "logfile.h"
 //#include "eth.h"
@@ -22,9 +23,13 @@
 //#include "EventResponder.h"
 
 void event100ms() {  //   call this 10 Hz
-	analogWrite(led1_pin, led1.liGet(msNow)); 
+	//analogWrite(led1_pin, led1.liGet(msNow)); 
 	analogWrite(ledPin, led1.liGet(msNow));  //   support the orange LED
 	//irProces();
+
+	unsigned long ch1 = rcv_ch1();
+	unsigned long val = map(ch1, 1290, 1780, 0, 179);
+	steering(val);
 }
 
 static int lastBatteryInfo = 0, nextBatteryInfo = 0;

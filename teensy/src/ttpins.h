@@ -44,15 +44,11 @@ const int m2flt = 40;
 const int m1slp = 16;
 const int m2slp = 39;
 
-/*
-const int m1encA = 2;
-const int m1encB = 3;
-const int m2encA = 4;
-const int m2encB = 5;
-
-*/
 const int rcv_ch1pin = 2;
 const int rcv_ch2pin = 3;
+const int wheel_servo_pin = 4;
+const int motor_control_pin = 5;
+const int transmission_shift_pin = 9;
 
 /**   IR
  * 

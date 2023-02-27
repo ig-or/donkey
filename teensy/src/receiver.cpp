@@ -18,6 +18,13 @@ volatile unsigned long cch2 = 0;
 elapsedMicros ch1Time;
 elapsedMicros ch2Time;
 
+unsigned long rcv_ch1() {
+	return cch1;
+}
+unsigned long rcv_ch2() {
+	return cch2;
+}
+
 void checkCH1(){
    if( digitalReadFast(rcv_ch1pin) == HIGH ) { 
 	wch1 = ch1Time;
