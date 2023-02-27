@@ -10,6 +10,7 @@
 #include "cmdhandler.h"
 #include "adcsetup.h"
 #include "memsic.h"
+#include "receiver.h"
 #include "ir.h"
 //#include "logfile.h"
 //#include "eth.h"
@@ -21,7 +22,8 @@
 //#include "EventResponder.h"
 
 void event100ms() {  //   call this 10 Hz
-	analogWrite(led1_pin, led1.liGet(msNow));  //   support the orange LED
+	analogWrite(led1_pin, led1.liGet(msNow)); 
+	analogWrite(ledPin, led1.liGet(msNow));  //   support the orange LED
 	//irProces();
 }
 
@@ -34,10 +36,11 @@ void event250ms() {	  //  call this 4  Hz
 		lastBatteryInfo = nextBatteryInfo;
 		batteryUpdate(lastBatteryInfo);
 	}
+	receiverPrint();
 }
 
 void event1s() {   //  call this 1 Hz
-	xmprintf(1, "1s EVENT \r\n");
+	//xmprintf(1, "1s EVENT \r\n");
 	//xmprintf(0, ".");
 	//batteryUpdate();
 	//adc->readSingle(1);
@@ -76,6 +79,8 @@ void onAdc0() {
 	nextBatteryInfo =  adcReadSingle(0);
 }
 
+
+
 extern "C" int main(void) {
 
 	xmprintf(1, "\r\n4.1 started\r\n");
@@ -90,9 +95,9 @@ extern "C" int main(void) {
 		xmprintf(1, "HELLO! \n");
 	}
 */
-	xmprintf(1, "starting ttsetup \n");
+	//xmprintf(1, "starting ttsetup \n");
 	ttSetup();
-	xmprintf(1, "ttsetup OK \n");
+	//xmprintf(1, "ttsetup OK \n");
 	msNow = millis();
 	uint32_t fast100msPingTime = msNow;
 	uint32_t fast250msPingTime = msNow;
@@ -103,7 +108,7 @@ extern "C" int main(void) {
 	setAdcHandler(onAdc0, 0);
 	led1.liSetMode(LedIndication::LIRamp, 0.9);
 
-	xmprintf(1, "entering WHILE \n");
+	//xmprintf(1, "entering WHILE \n");
 	while (1) {
 		msNow = millis();
 		//mksNow = micros();

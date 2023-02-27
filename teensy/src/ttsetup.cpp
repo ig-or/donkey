@@ -9,6 +9,7 @@
 #include "memsic.h"
 //#include "eth.h"
 #include "logfile.h"
+#include "receiver.h"
 //#include "imu_alg.h"
 
 int ttSetup() {
@@ -32,6 +33,7 @@ int ttSetup() {
 	analogWrite(led1_pin, maxPWM);
 	//setupMemsic();
 	//imuAlgInit();
+	receiverSetup();
 	analogWrite(led1_pin, 0);
 	
 	return 0;

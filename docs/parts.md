@@ -69,3 +69,10 @@ Convenient to adjust the steering trim, the throttle trim, steering rate
 
 #### dc-dc 12->5v 50W voltage converter
 
+
+#### small parts
+
+ * dc-dc pololu 5V 500 mA step-Down voltage regilator; D24V5F5, to power teenst board from the BEC on motor control unit
+ 
+ 
+
