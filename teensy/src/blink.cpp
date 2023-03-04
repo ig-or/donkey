@@ -28,7 +28,7 @@ void event100ms() {  //   call this 10 Hz
 	//irProces();
 
 	unsigned long ch1 = rcv_ch1();
-	unsigned long val = map(ch1, 1290, 1780, 0, 179);
+	unsigned long val = map(ch1, 1290, 1780, 0, 180);
 	steering(val);
 }
 
