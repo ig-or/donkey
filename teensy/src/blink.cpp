@@ -27,9 +27,9 @@ void event100ms() {  //   call this 10 Hz
 	analogWrite(ledPin, led1.liGet(msNow));  //   support the orange LED
 	//irProces();
 
-	unsigned long ch1 = rcv_ch1();
-	unsigned long val = map(ch1, 1290, 1780, 0, 180);
-	steering(val);
+	//unsigned long ch1 = rcv_ch1();
+	//unsigned long val = map(ch1, 1290, 1780, 0, 180);
+	//steering(val);
 }
 
 static int lastBatteryInfo = 0, nextBatteryInfo = 0;
@@ -41,7 +41,7 @@ void event250ms() {	  //  call this 4  Hz
 		lastBatteryInfo = nextBatteryInfo;
 		batteryUpdate(lastBatteryInfo);
 	}
-	receiverPrint();
+	
 }
 
 void event1s() {   //  call this 1 Hz
@@ -50,6 +50,7 @@ void event1s() {   //  call this 1 Hz
 	//batteryUpdate();
 	//adc->readSingle(1);
 	//bool test1 = adc->adc1->startSingleRead(m1cs);
+
 	bool test2 = adcStartSingleRead(0, bvPin);  //adc->adc0->startSingleRead(bvPin);
 
 
@@ -60,6 +61,7 @@ void event1s() {   //  call this 1 Hz
 	//	led1.liSetMode(LedIndication::LIRamp, 8.0);
 //
 	//}
+	//receiverPrint();
 }
 
 void powerStatusChangeH(PowerStatus from, PowerStatus to) {
@@ -82,6 +84,17 @@ void powerStatusChangeH(PowerStatus from, PowerStatus to) {
 
 void onAdc0() {
 	nextBatteryInfo =  adcReadSingle(0);
+}
+void rcv_ch1(ReceiverUpdateFlag flag, int v) {
+	unsigned long val = map(v, 1294, 1780, 0, 180);
+	steering(val);
+	xmprintf(3, "CH1\t v = %d; val = %d  \r\n", v, val);
+}
+
+void rcv_ch2(ReceiverUpdateFlag flag, int v) {
+	unsigned long val = map(v, 1259, 1740, 0, 180);
+	moveTheVehicle(val);
+	xmprintf(3, "CH2\t v = %d; val = %d  \r\n", v, val);
 }
 
 
@@ -112,6 +125,9 @@ extern "C" int main(void) {
 	serPwStatusChangeHandler(powerStatusChangeH);
 	setAdcHandler(onAdc0, 0);
 	led1.liSetMode(LedIndication::LIRamp, 0.9);
+
+	setReceiverUpdateCallback(rcv_ch1, 1);
+	setReceiverUpdateCallback(rcv_ch2, 2);
 
 	//xmprintf(1, "entering WHILE \n");
 	while (1) {
