@@ -7,7 +7,7 @@
 #include "ir.h"
 #include "teetools.h"
 #include "memsic.h"
-//#include "eth.h"
+#include "eth.h"
 #include "logfile.h"
 #include "receiver.h"
 #include "motors.h"
@@ -26,7 +26,7 @@ int ttSetup() {
 	//////analogReadAveraging(8);
 	
 	lfInit();  //  SD log file init; will set up sdStarted = true; if SD card present
-	//ethSetup();
+	ethSetup();
 
 	//irSetup(); // IR receiver setup
 

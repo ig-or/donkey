@@ -8,7 +8,7 @@
 #include "teetools.h"
 
 const int receiverChannelCount = 2;
-int delta = 2;
+//int delta = 2;
 
 struct ReceiverChannel {
 	int chID = 0; 
@@ -19,6 +19,7 @@ struct ReceiverChannel {
 	elapsedMicros chTime;
 	recvChangeT cb = 0;		//  callback function
 	int pin = 0;
+	int deadBand = 0; 
 	void rcvUpdate();
 	void rcvPrint();
 };
@@ -31,7 +32,7 @@ void ReceiverChannel::rcvUpdate() {
    }   else { 
 	cch = chTime;
 		if (cb != 0) {
-			if ((cch > (cchPrev + delta)) || (cch < (cchPrev - delta))) {
+			if ((cch > (cchPrev + deadBand)) || (cch < (cchPrev - deadBand))) {
 				cchPrev = cch;
 				if (cch != 0) {
 					if (working) {
@@ -77,8 +78,8 @@ void receiverPrint() {
 
 void receiverSetup() {
 	//;
-	ch[0].pin = rcv_ch1pin;  ch[0].chID = 1;
-	ch[1].pin = rcv_ch2pin;	 ch[1].chID = 2;
+	ch[0].pin = rcv_ch1pin;  ch[0].chID = 1;   ch[0].deadBand = 3;
+	ch[1].pin = rcv_ch2pin;	 ch[1].chID = 2;	ch[1].deadBand = 5;
 
 	attachInterrupt( rcv_ch1pin, checkCH1, CHANGE );  
 	attachInterrupt( rcv_ch2pin, checkCH2, CHANGE );  

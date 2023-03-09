@@ -4,7 +4,7 @@
 #include "SdFat.h"
 
 #include "teetools.h"
-//#include "eth.h"
+#include "eth.h"
 
 //#include "ADC.h"
 #include "adcsetup.h"
@@ -112,13 +112,13 @@ int xmprintf(int dst, const char* s, ...) {
 
 	int bs = 0;
 
-	if (dst & 1) {
+	//if (dst & 1) {
 		bs = snprintf(sbuf, 32, "%lu\t%.3f\t", sprintCounter, 1000.0f / 1000.0f);
 		if ((bs <= 0) || (bs >= 32)) {
 			strcpy(sbuf, "errror 1\n");
 			goto writeHere;
 		}
-	}
+	//}
 
 	ok = vsnprintf_P(sbuf + bs, sbSize - 3 - bs, s, args);
 	va_end(args);
@@ -150,7 +150,7 @@ writeHere:
 		usb_serial_write((void*)(sbuf), eos);
 	}
 	if ((dst & 2) && enableEthOutput) {
-		//ethFeed(sbuf, eos);
+		ethFeed(sbuf, eos);
 	}
 	
 	sprintCounter++;

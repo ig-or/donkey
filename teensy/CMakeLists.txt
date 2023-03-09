@@ -5,6 +5,8 @@ cmake_minimum_required (VERSION 3.16)
 set(PROJECT_NAME donkey)
 PROJECT(${PROJECT_NAME})
 
+option(LOAD_VIA_ROBOT "load the file to the teensy module via jetson nano" ON)
+
 set(PROJ_SRC_FILES  SL_${PROJECT_NAME})
 set(CMAKE_COLOR_MAKEFILE TRUE)
 set(CMAKE_VERBOSE_MAKEFILE ON)
@@ -119,7 +121,7 @@ else()
 		#COMMAND echo  "teensy post buld completed" 
 		BYPRODUCTS ${BUILD_DIR}/${PROJECT_NAME}.hex
 		WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-		COMMENT "makeing HEX file" 
+		COMMENT "making HEX file" 
 		VERBATIM 
 		USES_TERMINAL
 	)
@@ -127,24 +129,27 @@ else()
 endif()
 
 
-add_custom_target(
-	run ${atools}/teensy_reboot
-	COMMENT   "loading the code into the teensy board" VERBATIM USES_TERMINAL
-	WORKING_DIRECTORY "${atools}"
-)
+if (LOAD_VIA_ROBOT )
+	add_custom_command(TARGET ${PROJECT_NAME}  POST_BUILD 
+		COMMAND scp   "${BUILD_DIR}/${PROJECT_NAME}.hex" robot:/home/nano/prog 
+		COMMAND ssh   nano@robot /home/nano/donkey_load
+		COMMENT   "loading the code into the teensy board"
+		WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+		VERBATIM
+		USES_TERMINAL
+	)
+else()
+	add_custom_target(
+		run ${atools}/teensy_reboot
+		COMMENT   "loading the code into the teensy board" VERBATIM USES_TERMINAL
+		WORKING_DIRECTORY "${atools}"
+	)
+endif()
 
 
 
-#
-#add_custom_command(TARGET ${PROJECT_NAME}  POST_BUILD 
-#	COMMAND scp   teetest.hex robot:/home/nano/prog 
-#	COMMAND ssh   nano@robot /home/nano/teeload
-#	COMMENT   "loading the code into the teensy board"
-#	WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-#	VERBATIM
-#	USES_TERMINAL
-#)
-#
+
+
 
 
 

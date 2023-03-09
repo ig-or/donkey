@@ -14,7 +14,7 @@
 #include "motors.h"
 #include "ir.h"
 //#include "logfile.h"
-//#include "eth.h"
+#include "eth.h"
 #include "power.h"
 
 //#include "xmfilter.h"
@@ -115,7 +115,7 @@ extern "C" int main(void) {
 */
 	//xmprintf(1, "starting ttsetup \n");
 	ttSetup();
-	//xmprintf(1, "ttsetup OK \n");
+	xmprintf(1, "ttsetup OK \n");
 	msNow = millis();
 	uint32_t fast100msPingTime = msNow;
 	uint32_t fast250msPingTime = msNow;
@@ -124,12 +124,12 @@ extern "C" int main(void) {
 
 	serPwStatusChangeHandler(powerStatusChangeH);
 	setAdcHandler(onAdc0, 0);
-	led1.liSetMode(LedIndication::LIRamp, 0.9);
+	led1.liSetMode(LedIndication::LIRamp, 1.2);
 
 	setReceiverUpdateCallback(rcv_ch1, 1);
 	setReceiverUpdateCallback(rcv_ch2, 2);
 
-	//xmprintf(1, "entering WHILE \n");
+	xmprintf(1, "entering WHILE \n");
 	while (1) {
 		msNow = millis();
 		//mksNow = micros();
@@ -144,7 +144,7 @@ extern "C" int main(void) {
 		//	setMSpeed(axSmoothed, axSmoothed);
 		//}
 
-		//ethLoop();		//  ethernet
+		ethLoop();		//  ethernet
 		//lfProcess();  	//  log file
 
 		if (msNow > (fast100msPingTime + 100)) {
