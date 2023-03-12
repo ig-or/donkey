@@ -13,6 +13,7 @@
 #include "receiver.h"
 #include "motors.h"
 #include "ir.h"
+#include "sr04.h"
 //#include "logfile.h"
 #include "eth.h"
 #include "power.h"
@@ -30,6 +31,7 @@ void event100ms() {  //   call this 10 Hz
 	//unsigned long ch1 = rcv_ch1();
 	//unsigned long val = map(ch1, 1290, 1780, 0, 180);
 	//steering(val);
+	usPing();
 }
 
 static int lastBatteryInfo = 0, nextBatteryInfo = 0;
@@ -45,6 +47,7 @@ void event250ms() {	  //  call this 4  Hz
 }
 
 void event1s() {   //  call this 1 Hz
+	usPrint();
 	//xmprintf(1, "1s EVENT \r\n");
 	//xmprintf(0, ".");
 	//batteryUpdate();
@@ -102,8 +105,9 @@ void rcv_ch2(ReceiverUpdateFlag flag, int v) {
 extern "C" int main(void) {
 
 	xmprintf(1, "\r\n4.1 started\r\n");
-	/*
+	
 	pinMode(13, OUTPUT);
+	/*
 	while (1) {
 		digitalWriteFast(13, HIGH);
 		delay(500);

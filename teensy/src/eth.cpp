@@ -19,6 +19,7 @@ enum EthStatus {
 EthStatus ethStatus = sEthInit;
 EthernetLinkStatus linkStatus = Unknown; ///< this is from NativeEthernet.h
 unsigned int aliveTime = 0;
+static char macs[24];
 
 // Enter a MAC address and IP address for your controller below.
 // The IP address will be dependent on your local network:
@@ -65,6 +66,7 @@ void ethSetup() {
 	xmprintf(1, "eth starting ....  ");
 	uint8_t mac[6];
 	teensyMAC(mac);
+	xmprintf(1, "mac %s\n", macs);
 	Ethernet.begin(mac, ip);
 	xmprintf(1, " .. begin .. ");
 
@@ -250,12 +252,12 @@ void ethLoop() {
 }
 
 void teensyMAC(uint8_t *mac) {
-	static char teensyMac[23];
+	
 
 	//Serial.println("using HW_OCOTP_MAC* - see https://forum.pjrc.com/threads/57595-Serial-amp-MAC-Address-Teensy-4-0");
 	for(uint8_t by=0; by<2; by++) mac[by]=(HW_OCOTP_MAC1 >> ((1-by)*8)) & 0xFF;
 	for(uint8_t by=0; by<4; by++) mac[by+2]=(HW_OCOTP_MAC0 >> ((3-by)*8)) & 0xFF;
 		
-	sprintf(teensyMac, "MAC: %02x:%02x:%02x:%02x:%02x:%02x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+	snprintf(macs, 24, "MAC: %02x:%02x:%02x:%02x:%02x:%02x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 	//Serial.println(teensyMac);
 }

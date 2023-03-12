@@ -50,6 +50,12 @@ const int wheel_servo_pin = 4;
 const int motor_control_pin = 5;
 const int transmission_shift_pin = 9;
 
+const int usonic0_echo_pin = 23;
+const int usonic0_trig_pin = 22;
+const int usonic1_echo_pin = 25;
+const int usonic1_trig_pin = 24;
+
+
 /**   IR
  * 
  * */

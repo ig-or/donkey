@@ -65,14 +65,41 @@ Convenient to adjust the steering trim, the throttle trim, steering rate
    * size  Φ72.3*41.2mm
    * 
 
+####  another lidar
+
 #### teency 4.1 board
 
 #### dc-dc 12->5v 50W voltage converter
 
+#### 2x SparkFun Logic Level Converter - Bi-Directional
+https://www.sparkfun.com/products/12009
+steps down 5V signals to 3.3V AND steps up 3.3V to 5V at the same time
+
 
 #### small parts
 
- * dc-dc pololu 5V 500 mA step-Down voltage regilator; D24V5F5, to power teenst board from the BEC on motor control unit
+ * dc-dc pololu 5V 500 mA step-Down voltage regilator; D24V5F5, to power teensy board from the BEC on motor control unit
+
+####  IMU 'Memsic' IMU381
+
+
+#### UBLOX GPS receiver + external antenna
+
+#### 2x ultrasound sensor
+Ultrasonic Distance Sensor - HC-SR04    
+https://www.sparkfun.com/products/15569
+https://github.com/sparkfun/HC-SR04_UltrasonicSensor
+
+
+####   nvidia jetson NANO dev kit
+
+####  optical flow sensor
+https://shop.pimoroni.com/products/paa5100je-optical-tracking-spi-breakout
+https://www.robotshop.com//products/paa5100je-near-optical-flow-spi-breakout
+
+
+
+
  
  
 

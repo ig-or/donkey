@@ -11,6 +11,7 @@
 #include "logfile.h"
 #include "receiver.h"
 #include "motors.h"
+#include "sr04.h"
 //#include "imu_alg.h"
 
 int ttSetup() {
@@ -36,6 +37,7 @@ int ttSetup() {
 	//imuAlgInit();
 	receiverSetup();
 	msetup();
+	usSetup();
 	analogWrite(led1_pin, 0);
 	
 	return 0;
