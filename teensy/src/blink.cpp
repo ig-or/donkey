@@ -1,6 +1,7 @@
 
 #include <Arduino.h>
 //#include "ADC.h"
+//#include "IntervalTimer.h"
 
 #include "ttpins.h"
 #include "ttsetup.h"
@@ -18,10 +19,12 @@
 #include "eth.h"
 #include "power.h"
 
+
 //#include "xmfilter.h"
 //#include "imu_alg.h"
 
 //#include "EventResponder.h"
+IntervalTimer intervalTimer;
 
 void event100ms() {  //   call this 10 Hz
 	//analogWrite(led1_pin, led1.liGet(msNow)); 
@@ -31,7 +34,7 @@ void event100ms() {  //   call this 10 Hz
 	//unsigned long ch1 = rcv_ch1();
 	//unsigned long val = map(ch1, 1290, 1780, 0, 180);
 	//steering(val);
-	usPing();
+	//usPing(0);
 }
 
 static int lastBatteryInfo = 0, nextBatteryInfo = 0;
@@ -47,7 +50,7 @@ void event250ms() {	  //  call this 4  Hz
 }
 
 void event1s() {   //  call this 1 Hz
-	usPrint();
+	//usPrint();
 	//xmprintf(1, "1s EVENT \r\n");
 	//xmprintf(0, ".");
 	//batteryUpdate();
@@ -64,7 +67,7 @@ void event1s() {   //  call this 1 Hz
 	//	led1.liSetMode(LedIndication::LIRamp, 8.0);
 //
 	//}
-	//receiverPrint();
+	receiverPrint();
 }
 
 void powerStatusChangeH(PowerStatus from, PowerStatus to) {
@@ -100,6 +103,12 @@ void rcv_ch2(ReceiverUpdateFlag flag, int v) {
 	xmprintf(3, "CH2\t v = %d; val = %d  \r\n", v, val);
 }
 
+volatile unsigned int fCounter = 0;
+void intervalFunction() {
+
+	fCounter += 1;
+}
+
 
 
 extern "C" int main(void) {
@@ -133,6 +142,9 @@ extern "C" int main(void) {
 	setReceiverUpdateCallback(rcv_ch1, 1);
 	setReceiverUpdateCallback(rcv_ch2, 2);
 
+	intervalTimer.priority(254);
+	intervalTimer.begin(intervalFunction, 10000);
+	usStartPing(1);
 	xmprintf(1, "entering WHILE \n");
 	while (1) {
 		msNow = millis();

@@ -3,6 +3,7 @@
 #include "PWMServo.h"
 #include "motors.h"
 #include "ttpins.h"
+#include "sr04.h"
 
 PWMServo steeringServo;
 PWMServo motor;
@@ -25,6 +26,10 @@ void msetup() {
 
 void steering(int angle) {
 	steeringServo.write(angle);
+}
+
+int wallDetector(int a) {
+	
 }
 
 void moveTheVehicle(int a) {

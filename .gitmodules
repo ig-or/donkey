@@ -4,3 +4,6 @@
 [submodule "teensy/pjrc/libraries/FNET"]
 	path = teensy/pjrc/libraries/FNET
 	url = https://github.com/vjmuzik/FNET.git
+[submodule "teensy/pjrc/libraries/TeensyTimerTool"]
+	path = teensy/pjrc/libraries/TeensyTimerTool
+	url = https://github.com/luni64/TeensyTimerTool.git
