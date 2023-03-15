@@ -7,6 +7,7 @@
 #include "ttsetup.h"
 #include "teetools.h"
 #include "led_indication.h"
+#include "controller.h"
 
 #include "cmdhandler.h"
 #include "adcsetup.h"
@@ -67,11 +68,12 @@ void event1s() {   //  call this 1 Hz
 	//	led1.liSetMode(LedIndication::LIRamp, 8.0);
 //
 	//}
-	receiverPrint();
+	
+	//receiverPrint();
 }
 
 void powerStatusChangeH(PowerStatus from, PowerStatus to) {
-	xmprintf(0, "POWER: %s -> %s \r\n", pwrStatusText[from], pwrStatusText[to]);
+	xmprintf(3, "POWER: %s -> %s \r\n", pwrStatusText[from], pwrStatusText[to]);
 	mxat(from != to);
 	switch(to) {
 		case pwVeryLow:
@@ -91,29 +93,22 @@ void powerStatusChangeH(PowerStatus from, PowerStatus to) {
 void onAdc0() {
 	nextBatteryInfo =  adcReadSingle(0);
 }
-void rcv_ch1(ReceiverUpdateFlag flag, int v) {
-	unsigned long val = map(v, 1294, 1780, 0, 180);
-	steering(val);
-	xmprintf(3, "CH1\t v = %d; val = %d  \r\n", v, val);
-}
 
-void rcv_ch2(ReceiverUpdateFlag flag, int v) {
-	unsigned long val = map(v, 1259, 1740, 0, 180);
-	moveTheVehicle(val);
-	xmprintf(3, "CH2\t v = %d; val = %d  \r\n", v, val);
-}
 
 volatile unsigned int fCounter = 0;
 void intervalFunction() {
-
+	if (fCounter % 200 == 0) {
+		//xmprintf(3, "%u intervalFunction \r\n", fCounter);
+	}
 	fCounter += 1;
+	control100();
 }
 
 
 
 extern "C" int main(void) {
 
-	xmprintf(1, "\r\n4.1 started\r\n");
+	xmprintf(1, "4.1 started\r\n");
 	
 	pinMode(13, OUTPUT);
 	/*
@@ -128,7 +123,7 @@ extern "C" int main(void) {
 */
 	//xmprintf(1, "starting ttsetup \n");
 	ttSetup();
-	xmprintf(1, "ttsetup OK \n");
+	xmprintf(1, "ttsetup OK \r\n");
 	msNow = millis();
 	uint32_t fast100msPingTime = msNow;
 	uint32_t fast250msPingTime = msNow;
@@ -139,13 +134,10 @@ extern "C" int main(void) {
 	setAdcHandler(onAdc0, 0);
 	led1.liSetMode(LedIndication::LIRamp, 1.2);
 
-	setReceiverUpdateCallback(rcv_ch1, 1);
-	setReceiverUpdateCallback(rcv_ch2, 2);
-
-	intervalTimer.priority(254);
+	intervalTimer.priority(255);
 	intervalTimer.begin(intervalFunction, 10000);
 	usStartPing(1);
-	xmprintf(1, "entering WHILE \n");
+	xmprintf(1, "entering WHILE \r\n");
 	while (1) {
 		msNow = millis();
 		//mksNow = micros();
