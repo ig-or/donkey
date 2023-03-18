@@ -51,14 +51,15 @@ void event250ms() {	  //  call this 4  Hz
 }
 
 void event1s() {   //  call this 1 Hz
-	//usPrint();
+	usPrint();
+
 	//xmprintf(1, "1s EVENT \r\n");
 	//xmprintf(0, ".");
 	//batteryUpdate();
 	//adc->readSingle(1);
 	//bool test1 = adc->adc1->startSingleRead(m1cs);
 
-	bool test2 = adcStartSingleRead(0, bvPin);  //adc->adc0->startSingleRead(bvPin);
+	//  BATT INFO   VALTAGE READ  bool test2 = adcStartSingleRead(0, bvPin);  //adc->adc0->startSingleRead(bvPin);
 
 
 	//xmprintf(0, " .%d,%d ", test1?1:2, test2?1:2);
@@ -101,7 +102,9 @@ void intervalFunction() {
 		//xmprintf(3, "%u intervalFunction \r\n", fCounter);
 	}
 	fCounter += 1;
-	control100();
+	if (fCounter & 1) {
+		control100();
+	}
 }
 
 
@@ -136,7 +139,7 @@ extern "C" int main(void) {
 
 	intervalTimer.priority(255);
 	intervalTimer.begin(intervalFunction, 10000);
-	usStartPing(1);
+	//usStartPing(1);
 	xmprintf(1, "entering WHILE \r\n");
 	while (1) {
 		msNow = millis();
@@ -144,8 +147,12 @@ extern "C" int main(void) {
 
 		//analogWrite(ledPin, p);
 		//analogWrite(led1_pin, led1.liGet(msNow));
-
-		//delay(2);
+		
+		//while(1)  {
+		//	delay(2);
+		//	yield();
+		//}
+		
 		//axSmoothCounter = 0;
 		//processMemsicData(imuInfo);
 		//if (axSmoothCounter != 0) {
@@ -154,6 +161,9 @@ extern "C" int main(void) {
 
 		ethLoop();		//  ethernet
 		//lfProcess();  	//  log file
+
+		//yield();
+		//continue;
 
 		if (msNow > (fast100msPingTime + 100)) {
 			fast100msPingTime = msNow;
@@ -167,7 +177,9 @@ extern "C" int main(void) {
 					event1s();
 				}
 			}
+			
 		}
+		
 		yield();	
 	}
 }

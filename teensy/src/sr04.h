@@ -14,14 +14,21 @@ struct SR04Info  {
 void usSetup();
 
 /**
- * \param sid sensor ID, 0 or 1
+ * \param sid sensor ID, 0 (forward) or 1 (backward)
 */
 void usStartPing(char sid);
 void usPrint();
 
 /**
  * get the measurements from the sensor.
- * \param info where to put the info
- * \param sid  sensor ID  ;  0 or 1
+ * \param[out] info where to put the info
+ * \param[in] sid  sensor ID  ;  0 or 1
 */
 void getSR04Info(char sid, SR04Info& info);
+
+/**
+ * get the measurements from the sensor, with median filtering enabled.
+ * \param[out] info where to put the info
+ * \param[in] sid  sensor ID  ;  0 or 1
+*/
+//void getSR04Info2(char sid, SR04Info& info);

@@ -7,10 +7,14 @@
 #include "ttpins.h"
 
 #include "memsic.h"
+#include "sr04.h"
+#include "motors.h"
+#include "controller.h"
+#include "receiver.h"
 //#include "imu_alg.h"
 #include "logfile.h"
 //#include "logsend.h"
-//#include "eth.h"
+#include "eth.h"
 #include "power.h"
 
 static const int incomingUsbSerialInfoSize = 32;
@@ -26,7 +30,7 @@ void h_usb_serial() {
 		int bs2 = (bs1 <= incomingUsbSerialInfoSize) ? bs1 : incomingUsbSerialInfoSize;
 		int bs3 = usb_serial_read(incomingUsbSerialInfo, bs2);
 		if (bs3 > 0) {
-			//usb_serial_write(incomingUsbSerialInfo, bs3); //  this is for debugging and testing
+			////usb_serial_write(incomingUsbSerialInfo, bs3); //  this is for debugging and testing
 			onIncomingInfo(incomingUsbSerialInfo, bs3);
 		}
 	}
@@ -42,10 +46,12 @@ void onIncomingInfo(char* s, int size) {
 		usb_serial_write(s+i, 1); // echo
 
 		if ((s[i] == 0) || (s[i] == '\n') || (s[i] == '\r')) {
-			info[infoIndex] = 0;
-			processTheCommand(info, infoIndex);
+			if (infoIndex != 0) {
+				info[infoIndex] = 0;
+				processTheCommand(info, infoIndex);
 
-			infoIndex = 0;
+				infoIndex = 0;
+			}
 		} else {
 			info[infoIndex] = s[i];
 			infoIndex++;
@@ -54,42 +60,51 @@ void onIncomingInfo(char* s, int size) {
 }
 
 int processTheCommand(const char* s, int size) {
-    //xmprintf(0, "got cmd size=%d (%s)", size, s);
-	xmprintf(2, "processTheCommand: (%s)\r\n", s);
+    //xmprintf(1, "got cmd size=%d (%s) \r\n", size, s);
+	xmprintf(3, "\r\nprocessTheCommand: (%s)\r\n", s);
+	
 	if (size == 0) {
 		size = strlen(s);
 	}
-	
-	if (strcmp(s, "imu") == 0) {
+
+	if (strcmp(s, "us") == 0 ) {
+		usPrint();
+	} else 	if (strcmp(s, "imu") == 0) {
 		memsicPrint();
-	}
-	//if (strcmp(s, "eth") == 0) {
-	//	ethPrint();
-	//}
-	
-	
-	if (strncmp(s, "log", 3) == 0) {
-		if (strlen(s) > 4) { //   use log file name
-			//logSetup(s + 4);
+	} else 	if (strcmp(s, "eth") == 0) {
+		ethPrint();
+	} else 	if (strncmp(s, "log", 3) == 0) {
+		if (size > 4) { //   use log file name
 			lfStart(s + 4);
 		} else {
-			//logSetup("log");
 			lfStart();
 		}
-	}
-	if (strcmp(s, "lstop") == 0) {
+	} else 	if (strcmp(s, "lstop") == 0) {
 		lfStop();
-	}
-	if (strcmp(s, "lprint") == 0) {
+	} else  if (strcmp(s, "lprint") == 0) {
 		lfPrint();
-	}
+	} else 	if (strcmp(s, "batt") == 0) {
+		batteryPrint();
+	} else if (strncmp(s, "mstart", 6) == 0) {	
+		int m;
+		int k = sscanf(s + 6, "%d", &m);
+		if (k == 1) {
+			enableMotor(m);
+			xmprintf(3, "motor (%d) enabled \r\n", m);
+		} else {
+			xmprintf(3, "motor : k = %d \r\n", k);
+		}
+	} else if (strcmp(s, "mstop") == 0) {
+		enableMotor(0);
+	} else if (strcmp(s, "cprint") == 0) {
+		controlPrint();
+	} 
+
+
+	//return 0;
 	//if (strncmp(s, "get ", 4) == 0) {
 	//	lfGetFile(s + 4);
-	//}
-	if (strcmp(s, "batt") == 0) {
-		batteryPrint();
-	}
-	
+	//}	
 
     return 0;
 }

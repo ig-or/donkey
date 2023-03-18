@@ -114,6 +114,7 @@ void receiverPrint() {
 }
 
 void receiverSetup() {
+	xmprintf(1, "receiverSetup() .... ");
 	//;
 	ch[0].pin = rcv_ch1pin;  ch[0].chID = 1;   ch[0].deadBand = 5;
 	ch[1].pin = rcv_ch2pin;	 ch[1].chID = 2;	ch[1].deadBand = 8;
@@ -123,6 +124,7 @@ void receiverSetup() {
 
 	attachInterrupt( rcv_ch1pin, checkCH1, CHANGE );  
 	attachInterrupt( rcv_ch2pin, checkCH2, CHANGE );  
+	xmprintf(17, "...OK \r\n");
 }
 
 void setReceiverUpdateCallback(recvChangeT f, int chNum) {

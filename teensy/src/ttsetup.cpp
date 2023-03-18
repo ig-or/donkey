@@ -17,9 +17,10 @@
 
 int ttSetup() {
 	pinMode(imuPwrPin, OUTPUT);
-	digitalWriteFast(imuPwrPin, LOW); //    no power for IMU yet
-
 	pinMode(ledPin, OUTPUT);
+	pinMode(led1_pin, OUTPUT);
+
+	digitalWriteFast(imuPwrPin, LOW); //    no power for IMU yet
 
 	//   from https://www.pjrc.com/teensy/td_pulse.html, see the bottom of the page
 	analogWriteResolution(pwmResolution);
@@ -32,7 +33,7 @@ int ttSetup() {
 
 	//irSetup(); // IR receiver setup
 
-	pinMode(led1_pin, OUTPUT);
+	
 	analogWrite(led1_pin, maxPWM);
 	//setupMemsic();
 	//imuAlgInit();

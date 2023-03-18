@@ -52,9 +52,11 @@ void rcv_ch2(int v) {
 
 
 void controlSetup() {
+	xmprintf(1, "control setup ... .. ");
 	mcState = mcUnknown;
 	setReceiverUpdateCallback(rcv_ch1, 1);
 	setReceiverUpdateCallback(rcv_ch2, 2);
+	xmprintf(17, "... .. OK \r\n");
 }
 
 /**
@@ -120,7 +122,7 @@ int wallDetector(int a) {
 			xmprintf(3, "start moving backward \r\n");
 			break;
 		default: 
-			usStartPing(-1);  
+			usStartPing(0);  
 			xmprintf(3, "stop \r\n");
 			break;
 		};
@@ -153,40 +155,48 @@ int wallDetector(int a) {
 	default: aa = a;
 	};
 	if (wdCounter % 50 == 0) {
-		xmprintf(3, "wallDetector mcState=%d;  a = %d;  aa = %d;  us.quality = %d;  us.distance_mm = %d; minA = %d; maxA = %d \r\n", 
-		mcState, a, aa, us.quality, us.distance_mm, minA, maxA);
+		//xmprintf(3, "wallDetector mcState=%d;  a = %d;  aa = %d;  us.quality = %d;  us.distance_mm = %d; minA = %d; maxA = %d \r\n", 
+		//mcState, a, aa, us.quality, us.distance_mm, minA, maxA);
 	}
 	wdCounter += 1;
 	return aa;
 }
 
-
-
-
-
 void controlFromTransmitter(unsigned int now) {
 	steering(rcvInfoCopy[0].v);
 
 	int a = rcvInfoCopy[1].v;
-	int aa = wallDetector(a);
-	if ((a != aa) != veloLimit) {
-		veloLimit = a != aa;
-		xmprintf(3, "veloLimit %s \r\n", veloLimit ? "start" : "stop");
-	}
+	//int aa = wallDetector(a);
+	//if ((a != aa) != veloLimit) {
+	//	veloLimit = a != aa;
+	//	xmprintf(3, "veloLimit %s \r\n", veloLimit ? "start" : "stop");
+	//}
 	
 	moveTheVehicle(rcvInfoCopy[1].v);
-	moveTheVehicle(aa);
+	//moveTheVehicle(aa);
 }
 
 static unsigned int controlCounter = 0;
+volatile char controlIsWorkingNow = false;
 void control100() {
+	//return;
+	if (controlIsWorkingNow != 0) {
+		return;
+	}
+	controlIsWorkingNow = 1;
 	unsigned int now = millis();
+
 	processReceiverState(now);
 	if (chState[0] == chYes && chState[1] == chYes) {
 		controlFromTransmitter(now);
 	}
+	
+	controlIsWorkingNow = 0;
+	controlCounter += 1;
+}
 
-
+void controlPrint() {
+	xmprintf(3, "control100(%u)   \r\n", controlCounter);
 }
 
 

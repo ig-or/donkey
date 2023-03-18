@@ -66,19 +66,19 @@ void ethSetup() {
 	xmprintf(1, "eth starting ....  ");
 	uint8_t mac[6];
 	teensyMAC(mac);
-	xmprintf(1, "mac %s\n", macs);
+	xmprintf(17, "mac %s  ", macs);
 	Ethernet.begin(mac, ip);
-	xmprintf(1, " .. begin .. ");
+	xmprintf(17, " .. begin .. ");
 
 	// Check for Ethernet hardware present
 	if (Ethernet.hardwareStatus() == EthernetNoHardware) 	{
 		ethStatus = sEthError;
-		xmprintf(1, "EthernetNoHardware \n ");
+		xmprintf(17, "EthernetNoHardware \r\n");
 		return;
 	}
 	linkStatus = Ethernet.linkStatus();
 	if (linkStatus == LinkOFF) 	{
-		xmprintf(1, "sEthNoLink \n ");
+		xmprintf(17, "  sEthNoLink   ");
 		ethStatus = sEthNoLink;
 	}
 
@@ -88,7 +88,7 @@ void ethSetup() {
 
   	server.begin(localPortTcp);
 	ethStatus = sEthGood;
-	xmprintf(1, "eth started 1 \r\n");
+	xmprintf(17, "eth started 1 \r\n");
 	initByteRoundBuf(&rb, buf, rbSize);
 	client = server.available();
 	xmprintf(1, "eth started 2; client=%s \r\n", client ? "yes" : "no");
@@ -119,6 +119,9 @@ void ethLoop() {
 		}
 		return;
 	}
+
+	return;
+
 	if (!client) {
 		client = server.available();
 	}
@@ -129,6 +132,9 @@ void ethLoop() {
 		}
 		return;
 	}
+
+	//return;
+
 	bool con = client.connected();
 	if (clientConnected != con) {
 		clientConnected  = con;
