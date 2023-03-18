@@ -110,9 +110,9 @@ void processReceiverState(unsigned int now) {
 MotorControlState getCurrentMcState(int a) {
 	MotorControlState state;
 
-	if (a < 90 - 10) {
+	if (a < 90 - 16) {
 		state =  mcForward;
-	} else if (a > 90 + 10) {
+	} else if (a > 90 + 16) {
 		state = mcBackward;
 	} else {
 		state = mcStop;
@@ -186,14 +186,14 @@ void controlFromTransmitter(unsigned int now) {
 	steering(rcvInfoCopy[0].v);
 
 	int a = rcvInfoCopy[1].v;
-	//int aa = wallDetector(a);
-	//if ((a != aa) != veloLimit) {
-	//	veloLimit = a != aa;
-	//	xmprintf(3, "veloLimit %s \r\n", veloLimit ? "start" : "stop");
-	//}
+	int aa = wallDetector(a);
+	if ((a != aa) != veloLimit) {
+		veloLimit = a != aa;
+		xmprintf(3, "veloLimit %s \r\n", veloLimit ? "start" : "stop");
+	}
 	
-	moveTheVehicle(rcvInfoCopy[1].v);
-	//moveTheVehicle(aa);
+	//moveTheVehicle(rcvInfoCopy[1].v);
+	moveTheVehicle(aa);
 }
 
 static unsigned int controlCounter = 0;

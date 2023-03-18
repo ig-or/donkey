@@ -51,7 +51,7 @@ void event250ms() {	  //  call this 4  Hz
 }
 
 void event1s() {   //  call this 1 Hz
-	usPrint();
+	//usPrint();
 
 	//xmprintf(1, "1s EVENT \r\n");
 	//xmprintf(0, ".");
