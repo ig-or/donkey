@@ -1,7 +1,7 @@
 
 #include <Arduino.h>
 //#include "ADC.h"
-//#include "IntervalTimer.h"
+//
 
 #include "ttpins.h"
 #include "ttsetup.h"
@@ -25,7 +25,7 @@
 //#include "imu_alg.h"
 
 //#include "EventResponder.h"
-IntervalTimer intervalTimer;
+
 
 void event100ms() {  //   call this 10 Hz
 	//analogWrite(led1_pin, led1.liGet(msNow)); 
@@ -96,19 +96,6 @@ void onAdc0() {
 }
 
 
-volatile unsigned int fCounter = 0;
-void intervalFunction() {
-	if (fCounter % 200 == 0) {
-		//xmprintf(3, "%u intervalFunction \r\n", fCounter);
-	}
-	fCounter += 1;
-	if (fCounter & 1) {
-		control100();
-	}
-}
-
-
-
 extern "C" int main(void) {
 
 	xmprintf(1, "4.1 started\r\n");
@@ -137,8 +124,6 @@ extern "C" int main(void) {
 	setAdcHandler(onAdc0, 0);
 	led1.liSetMode(LedIndication::LIRamp, 1.2);
 
-	intervalTimer.priority(255);
-	intervalTimer.begin(intervalFunction, 10000);
 	//usStartPing(1);
 	xmprintf(1, "entering WHILE \r\n");
 	while (1) {

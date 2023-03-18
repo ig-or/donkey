@@ -7,6 +7,9 @@
 #include "sr04.h"
 
 #include "wiring.h"
+#include "IntervalTimer.h"
+
+
 #include <cstring>
 
 struct RcvInfo {
@@ -32,6 +35,8 @@ enum MotorControlState {
 };
 MotorControlState mcState = mcUnknown;
 
+static IntervalTimer intervalTimer;
+
 // transmitter steering callback
 void rcv_ch1(int v) {
 	rcvInfoRcv[0].v = v;
@@ -50,12 +55,27 @@ void rcv_ch2(int v) {
 	//xmprintf(3, "CH2\t v = %d; val = %d  \r\n", v, val);
 }
 
+volatile unsigned int fCounter = 0;
+void control100();
+void intervalFunction() {
+	if (fCounter % 200 == 0) {
+		//xmprintf(3, "%u intervalFunction \r\n", fCounter);
+	}
+	fCounter += 1;
+	if (fCounter & 1) {
+		control100();
+	}
+}
+
 
 void controlSetup() {
 	xmprintf(1, "control setup ... .. ");
 	mcState = mcUnknown;
 	setReceiverUpdateCallback(rcv_ch1, 1);
 	setReceiverUpdateCallback(rcv_ch2, 2);
+
+	intervalTimer.priority(255);
+	intervalTimer.begin(intervalFunction, 10000);
 	xmprintf(17, "... .. OK \r\n");
 }
 

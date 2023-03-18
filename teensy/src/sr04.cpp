@@ -28,6 +28,8 @@ struct SR04 {
 	unsigned int echoStartTimeMks = 0;
 	unsigned int echoStopTimeMks = 0;
 	unsigned int pingCounter = 0;
+	unsigned int echoUpCounter = 0;
+	unsigned int echoDownCounter = 0;
 		
 	/**
 	 * \param id its ID
@@ -53,8 +55,11 @@ volatile unsigned int pingErrorCounter = 0;
 unsigned int errorsCounter[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 void usPrint() {
-	xmprintf(3, "SR04(%u  %u)\tquality: (%d, %d)  distance: [%d  %d] mm,  errors=[%u  %u  %u  %u  %u  %u  %u  %u  %u  %u]\r\n",
+	xmprintf(3, "SR04(%u  %u), (%u  %u), (%u  %u) \t quality: (%d, %d)  distance: [%d  %d] mm,  errors=[%u  %u  %u  %u  %u  %u  %u  %u  %u  %u %u  %u]\r\n",
 		sr04[0].pingCounter, sr04[1].pingCounter, 
+		sr04[0].echoUpCounter, sr04[1].echoUpCounter, 
+		sr04[0].echoDownCounter, sr04[1].echoDownCounter, 
+
 		sr04[0].info.quality,  sr04[1].info.quality,
 	  	sr04[0].info.distance_mm, 	sr04[1].info.distance_mm,
 		errorsCounter[0], errorsCounter[1], errorsCounter[2], errorsCounter[3], 
@@ -151,13 +156,20 @@ void stopPingImpulse() {
 }
 
 FASTRUN void usEcho(char usIndex) {
-	return;
+	//return;
 	if (usIndex != currentID) { // We got the echo, but now working with different sensor..  lets skip this measurement
 		errorsCounter[11] += 1;
 		return;
 	}
+	//xmprintf(1, " %d,%d ", usIndex, currentID);
+
 	SR04& sr = sr04[usIndex];
 	uint8_t echo =  digitalReadFast(sr.echoPin);
+	if (echo == HIGH) {
+		sr.echoUpCounter += 1;
+	} else {
+		sr.echoDownCounter += 1;
+	}
 	switch (pingStatus) {
 	case 2: // expecting HIGH
 		if (echo == HIGH) {
@@ -208,11 +220,12 @@ FASTRUN void usEcho(char usIndex) {
 }
 
 FASTRUN void us0Echo() {
-	//usEcho(0);
+	//xmprintf(1, ".");
+	usEcho(0);
 }
 
 FASTRUN void us1Echo() {
-	//usEcho(1);
+	usEcho(1);
 }
 
 void SR04::srSerup(int id_, int tp, int ep, int md) {
@@ -272,7 +285,7 @@ void usPing() {
 	//digitalWriteFast(sr04[currentID].trigPin, LOW);
 	//delayMicroseconds(4);
 	digitalWriteFast(sr04[currentID].trigPin, HIGH);
-	trigTimer.trigger(12);
+	trigTimer.trigger(10);
 	sr04[currentID].pingCounter += 1;
 }
 
@@ -284,6 +297,7 @@ void usStartPing(char sid) {
 }
 
 void periodicPing() {
+	//return;
 	switch (currentID) {
 	case 0: usPing(); break;
 	case 1: usPing(); break;
@@ -292,16 +306,18 @@ void periodicPing() {
 
 void usSetup() {
 	xmprintf(1, "ultra sonic setup ... ..  ");
-	currentID = -1;
+	currentID = 0;
 	pingStatus = 0;
 	sr04[0].srSerup(0, usonic0_trig_pin, usonic0_echo_pin);
 	sr04[1].srSerup(1, usonic1_trig_pin, usonic1_echo_pin);
-	//attachInterrupt( usonic0_echo_pin, us0Echo, CHANGE );   
-	//attachInterrupt( usonic1_echo_pin, us1Echo, CHANGE );   
+	attachInterrupt( usonic0_echo_pin, us0Echo, CHANGE );   
+	attachInterrupt( usonic1_echo_pin, us1Echo, CHANGE );   
 	xmprintf(17, ". srSerup() .. ");
+	//return;
 
 
 	trigTimer.begin(stopPingImpulse);
+	//return;
 	periodicPingTimer.begin(periodicPing, 50ms);
 	xmprintf(17, ".. ... OK \r\n");
 }
