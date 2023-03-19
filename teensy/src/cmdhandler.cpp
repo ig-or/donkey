@@ -13,7 +13,7 @@
 #include "receiver.h"
 //#include "imu_alg.h"
 #include "logfile.h"
-//#include "logsend.h"
+#include "logsend.h"
 #include "eth.h"
 #include "power.h"
 
@@ -83,6 +83,10 @@ int processTheCommand(const char* s, int size) {
 		lfStop();
 	} else  if (strcmp(s, "lprint") == 0) {
 		lfPrint();
+	}else  if (strcmp(s, "dir") == 0) {
+		lfFiles();
+	} else if (strncmp(s, "get ", 4) == 0) {
+		lfGetFile((const char*)(s + 4));
 	} else 	if (strcmp(s, "batt") == 0) {
 		batteryPrint();
 	} else if (strncmp(s, "mstart", 6) == 0) {	
@@ -100,11 +104,6 @@ int processTheCommand(const char* s, int size) {
 		controlPrint();
 	} 
 
-
-	//return 0;
-	//if (strncmp(s, "get ", 4) == 0) {
-	//	lfGetFile(s + 4);
-	//}	
 
     return 0;
 }

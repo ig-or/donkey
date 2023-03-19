@@ -38,37 +38,10 @@ static PolyFilter<3> mpf_027_50;
 static const int db = 1;
 static int prevMotorValue = 90;
 
-enum MotorMode {
-	mmStop = 0, 
-	mmRunning_027,  // low pass filter 0.27 Hz
-	mmRunning_05, 	 // low pass filter 0.5 Hz
-	mmRunning_08, 	 // low pass filter 0.8 Hz
-	mmRunning_25,   // low pass filter 2.5 Hz
-
-	mmShiftTest
-};
-
-static MotorMode mMode = mmStop;
-PolyFilter<3> mpf;
-
-void enableMotor(int u) {
-	bool irq = disableInterrupts();
-	mMode = static_cast<MotorMode>(u);
-	switch (mMode) {
-		case mmRunning_027: mpf.pfInit(ca3_027_50, cb3_027_50);	 break; 	//  cut off 0.27 Hz and sampling rate = 50 HZ
-		case mmRunning_05: 	mpf.pfInit(ca3_05_50, cb3_05_50);	 break; 	//  cut off 0.5 Hz and sampling rate = 50 HZ
-		case mmRunning_08: 	mpf.pfInit(ca3_08_50, cb3_08_50);	 break; 	//  cut off 0.8 Hz and sampling rate = 50 HZ
-		case mmRunning_25: 	mpf.pfInit(ca3_25_50, cb3_25_50);	 break; 	//  cut off 2.5 Hz and sampling rate = 50 HZ
-		case mmShiftTest:   mpf.pfInit(ca3_08_50, cb3_08_50);	 break; 	
-	};
-	enableInterrupts(irq);
-}
 
 void msetup() {
 	xmprintf(1, "msetup ... .. ");
-	enableMotor(mmStop);
-	mpf.pfInit(ca3_08_50, cb3_08_50);
-
+	
 	steeringServo.attach(wheel_servo_pin, steerMinMks, steerMaxMks);
 	motor.attach(motor_control_pin, motorMinMks, motorMaxMks);
 	tshift.attach(transmission_shift_pin, shiftMinMks, shiftMaxMks);
@@ -88,7 +61,7 @@ void mshift(int gear) {
 
 static unsigned int steeringCounter = 0;
 void steering(int angle) {
-	switch (mMode) {
+	/*switch (mMode) {
 		case mmStop:  break;
 		case mmShiftTest: {
 				int aa = (angle - 90) * 2 + 90;
@@ -103,6 +76,8 @@ void steering(int angle) {
 
 		default: 	steeringServo.write(angle);
 	};
+	*/
+	steeringServo.write(angle);
 	steeringCounter += 1;
 }
 
@@ -111,13 +86,9 @@ void steering(int angle) {
  * \param a the speed, from 0 to 180.  90 is stop.
 */
 void moveTheVehicle(int a) {
-	if (mMode == mmStop) {
-	} else {
-		long aa = std::lround(mpf.pfNext(a));
-		if (abs(aa - prevMotorValue) > db) {
-			prevMotorValue = aa;
-			motor.write(aa);
-		}
+	if (abs(a - prevMotorValue) > db) {
+		prevMotorValue = a;
+		motor.write(a);
 	}
 }
 

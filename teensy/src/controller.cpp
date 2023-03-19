@@ -5,6 +5,10 @@
 #include "motors.h"
 #include "teetools.h"
 #include "sr04.h"
+#include "xmessage.h"
+#include "logfile.h"
+#include "xmfilter.h"
+
 
 #include "wiring.h"
 #include "IntervalTimer.h"
@@ -36,6 +40,19 @@ enum MotorControlState {
 MotorControlState mcState = mcUnknown;
 
 static IntervalTimer intervalTimer;
+
+enum MotorMode {
+	mmStop = 0, 
+	mmRunning_027,  // low pass filter 0.27 Hz
+	mmRunning_05, 	 // low pass filter 0.5 Hz
+	mmRunning_08, 	 // low pass filter 0.8 Hz
+	mmRunning_25,   // low pass filter 2.5 Hz
+
+	mmShiftTest
+};
+
+PolyFilter<3> mpf;
+static MotorMode mMode = mmStop;
 
 // transmitter steering callback
 void rcv_ch1(int v) {
@@ -71,6 +88,8 @@ void intervalFunction() {
 void controlSetup() {
 	xmprintf(1, "control setup ... .. ");
 	mcState = mcUnknown;
+	enableMotor(mmStop);
+	mpf.pfInit(ca3_08_50, cb3_08_50);
 	setReceiverUpdateCallback(rcv_ch1, 1);
 	setReceiverUpdateCallback(rcv_ch2, 2);
 
@@ -104,15 +123,32 @@ void processReceiverState(unsigned int now) {
 	}
 }
 
+void enableMotor(int u) {
+	bool irq = disableInterrupts();
+	mMode = static_cast<MotorMode>(u);
+	switch (mMode) {
+		case mmRunning_027: mpf.pfInit(ca3_027_50, cb3_027_50);	 break; 	//  cut off 0.27 Hz and sampling rate = 50 HZ
+		case mmRunning_05: 	mpf.pfInit(ca3_05_50, cb3_05_50);	 break; 	//  cut off 0.5 Hz and sampling rate = 50 HZ
+		case mmRunning_08: 	mpf.pfInit(ca3_08_50, cb3_08_50);	 break; 	//  cut off 0.8 Hz and sampling rate = 50 HZ
+		case mmRunning_25: 	mpf.pfInit(ca3_25_50, cb3_25_50);	 break; 	//  cut off 2.5 Hz and sampling rate = 50 HZ
+		case mmShiftTest:   mpf.pfInit(ca3_08_50, cb3_08_50);	 break; 	
+	};
+	enableInterrupts(irq);
+}
+
+const int zeroRate = 90;
+const int stopRate = 20;
+const int motorRange = zeroRate - stopRate;
+
 /**
  * \param a the speed, from 0 to 180.  90 is stop.
 */
 MotorControlState getCurrentMcState(int a) {
 	MotorControlState state;
 
-	if (a < 90 - 16) {
+	if (a < zeroRate - stopRate) {
 		state =  mcForward;
-	} else if (a > 90 + 16) {
+	} else if (a > zeroRate + stopRate) {
 		state = mcBackward;
 	} else {
 		state = mcStop;
@@ -127,7 +163,7 @@ static unsigned char wdCounter = 0;
  * \param a the speed, from 0 to 180.  90 is stop.
  *  a=0 -> full forward; a = 180 => full backward;
 */
-int wallDetector(int a) {
+int wallDetector(int a, unsigned int timestamp) {
 	
 	MotorControlState state = getCurrentMcState(a);
 	//switch the ultrasonic
@@ -151,14 +187,14 @@ int wallDetector(int a) {
 
 	// apply the speed limit
 	SR04Info us;
-	int minA = 0, maxA = 0, aa = 90;
-	const int maxDist = 1600; // [mm]
+	int minmax = 0, aa = 90;
+	const int maxDist = 1400; // [mm]
 	switch (mcState) {
 	case mcForward:
 		getSR04Info(0, us);
 		if ((us.quality == 1) && (us.distance_mm < maxDist)) { // have some measurement
-			minA = 90 - (90 * us.distance_mm) / maxDist;
-			aa = (a < minA) ? minA : a;
+			minmax = zeroRate - stopRate - (motorRange * us.distance_mm) / maxDist;
+			aa = (a < minmax) ? minmax : a;
 		} else {
 			aa = a;
 		}
@@ -166,8 +202,8 @@ int wallDetector(int a) {
 	case mcBackward:
 		getSR04Info(1, us);
 		if ((us.quality == 1) && (us.distance_mm < maxDist)) { // have some measurement
-			maxA = 90 + (90 * us.distance_mm) / maxDist;
-			aa = (a > maxA) ? maxA : a;
+			minmax = zeroRate + stopRate + (motorRange * us.distance_mm) / maxDist;
+			aa = (a > minmax) ? minmax : a;
 		} else {
 			aa = a;
 		}
@@ -178,15 +214,37 @@ int wallDetector(int a) {
 		//xmprintf(3, "wallDetector mcState=%d;  a = %d;  aa = %d;  us.quality = %d;  us.distance_mm = %d; minA = %d; maxA = %d \r\n", 
 		//mcState, a, aa, us.quality, us.distance_mm, minA, maxA);
 	}
+
+	//   lets run the low pass filter
+	long bb;
+	if (mMode == mmStop) {
+		bb = std::lround(mpf.pfNext(ZERO));
+	} else {
+		bb = std::lround(mpf.pfNext(aa));
+	}
+
+		xqm::Control100Info info;
+		info.a = a;
+		info.aa = aa;
+		info.bb = bb;
+		info.timestamp = timestamp;
+		info.mcState = static_cast<char>(mcState);
+		info.minmax = minmax;
+		info.us_distance_mm = us.distance_mm;
+		info.us_quality = us.quality;
+		info.us_timestamp = us.measurementTimeMs;
+
+		lfSendMessage<xqm::Control100Info>(&info);
+
 	wdCounter += 1;
-	return aa;
+	return bb;
 }
 
 void controlFromTransmitter(unsigned int now) {
 	steering(rcvInfoCopy[0].v);
 
 	int a = rcvInfoCopy[1].v;
-	int aa = wallDetector(a);
+	int aa = wallDetector(a, now);
 	if ((a != aa) != veloLimit) {
 		veloLimit = a != aa;
 		xmprintf(3, "veloLimit %s \r\n", veloLimit ? "start" : "stop");

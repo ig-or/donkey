@@ -4,32 +4,38 @@
 #include "teetools.h"
 #include "xmessage.h"
 #include "xmessagesend.h"
+#include "rbuf.h"
+
+#include <atomic>
 
 const uint64_t fileSize = 104857600LL;
 constexpr uint64_t fileSize2 = fileSize - 16*512;
 // Use FIFO SDIO.
 #define SD_CONFIG SdioConfig(FIFO_SDIO)
 
-volatile ByteRoundBuf rb;
 //static const int rbSize = 4096; //8192;
-static unsigned char __attribute__((aligned(32))) rbBuf[rbSize];
+//extern unsigned char __attribute__((aligned(32))) rbBuf[rbSize];
+/*volatile */ByteRoundBuf rb;
+//static const int rbSize = 4096; //8192;
+unsigned char __attribute__((aligned(32))) rbBuf[rbSize];
 
 //  buffer for writing to file
 static const int tmpSize = 512;
 unsigned char tmpBuf[tmpSize];
 SdFs sd;
 FsFile file;
-volatile int feedingFlag = 0;
+volatile char feedingFlag = 0;
 volatile int ffErrorCounter = 0;
 volatile int ffOverflowCounter = 0;
 int fileNumber = 0;
-volatile bool lfWriting = false;
+volatile bool lfWriting = false; ///< true if writing the log file right now
 int fileCounter = 0;
 unsigned long long fileBytesCounter = 0LL;
 char fileNameCopy[64];
 
 volatile LFState lfState = lfSInit;
 volatile static bool sdStarted = false;
+static volatile std::atomic<unsigned char> lfMEssageCounter;  // log file message counter
 
 /*
 unsigned char* getRBuf() {
@@ -40,7 +46,7 @@ void resetRB() {
 }
 */
 void lfPrint() {
-	xmprintf(0, "file %s: \tlfState=%d; lfWriting=%s; ffErrorCounter=%d; ffOverflowCounter=%d; rb.overflow=%d; rb.error=%d; sdStarted=%s      \r\n", 
+	xmprintf(3, "file %s: \tlfState=%d; lfWriting=%s; ffErrorCounter=%d; ffOverflowCounter=%d; rb.overflow=%d; rb.error=%d; sdStarted=%s      \r\n", 
 		fileNameCopy, (int)(lfState), lfWriting?"yes":"no", 
 		ffErrorCounter, ffOverflowCounter,
 		rb.overflowCount, rb.errorCount,
@@ -49,68 +55,68 @@ void lfPrint() {
 }
 
 void lfInit() {
+	xmprintf(1, "SD init started;  ");
 	strncpy(fileNameCopy, "log.xq", 64);
 	bool irq = disableInterrupts();
 	initByteRoundBuf(&rb, rbBuf, rbSize);
-	feedingFlag = 0;
-	ffErrorCounter = 0;
-	ffOverflowCounter = 0;
-	lfWriting = false;
-	
+		feedingFlag = 0;
+		ffErrorCounter = 0;
+		ffOverflowCounter = 0;
+		lfWriting = false;
 	enableInterrupts(irq);
 
 	if (!sd.begin(SD_CONFIG)) {
     	//sd.initErrorHalt(&Serial);
-		xmprintf(0, "cannot start CD card (no card in slot?)\r\n");
+		xmprintf(17, "cannot start CD card (no card in slot?)\r\n");
 		lfState = lfSError;
 		sdStarted = false;
   	} else {
 		sdStarted = true;
 		lfState = lfSGood;
-		xmprintf(0, "sd card started \r\n");
+		xmprintf(17, "sd card started!  ");
 		uint32_t size = sd.card()->sectorCount();
 		if (size == 0) {
-			xmprintf(0, "cannot read SD card size \r\n");
+			xmprintf(17, "cannot read SD card size \r\n");
 		} else {
 			 uint32_t sizeMB = 0.000512 * size + 0.5;
-			 xmprintf(0, "SD size %u MB; Cluster size (bytes): %u \r\n", sizeMB, sd.vol()->bytesPerCluster());
+			 xmprintf(17, "SD size %u MB; Cluster size (bytes): %u \r\n", sizeMB, sd.vol()->bytesPerCluster());
 		}
 	}
 }
 
 void lfFiles() {
 	if (lfWriting) {
-		xmprintf(0, "writing file %s right now \r\n", fileNameCopy);
+		xmprintf(3, "writing file %s right now \r\n", fileNameCopy);
 		return;
 	}
 	if (!sdStarted) { //  try to start?
-		xmprintf(0, "SD didnt start \r\n");
+		xmprintf(3, "SD didnt start \r\n");
 		return;
 	}
 	mxat(lfState == lfSGood);
 	FsFile root, file;
   	if (!root.open("/")) {
-    	xmprintf(0, "cannot open root \r\n");
+    	xmprintf(3, "cannot open root \r\n");
 		return;
 	}
 	char stmp[32];
 	while (file.openNext(&root, O_RDONLY)) {
 		file.getName(stmp, 32);
 		unsigned long long size = file.size();
-		xmprintf(0, "%s\t%llu\r\n", stmp, size);
+		xmprintf(3, "%s\t%llu\r\n", stmp, size);
 		file.close();
 	}
 }
 
 void lfStart(const char* fileName) {
 	if (lfWriting) { // already
-		xmprintf(0, "writing file %s already \r\n", fileNameCopy);
+		xmprintf(3, "writing file %s already \r\n", fileNameCopy);
 		return;
 	}
 	if (!sdStarted) { //  try to start?
 		lfInit();
 		if (!sdStarted) {
-			xmprintf(0, "cannot2 start CD card (no card in slot?)\r\n");
+			xmprintf(3, "cannot2 start CD card (no card in slot?)\r\n");
 			return;
 		}
 	}
@@ -121,7 +127,7 @@ void lfStart(const char* fileName) {
 		int bs;
 		if (!file.open("fn.txt", O_RDWR)) { //   no file number
 			if (!file.open("fn.txt", O_CREAT | O_TRUNC | O_WRONLY)) { //  create a new file
-				xmprintf(0, "ERROR: cannot create a file fn.txt \r\n");
+				xmprintf(3, "ERROR: cannot create a file fn.txt \r\n");
 				lfState = lfSError;
 				return;
 			} else {
@@ -138,7 +144,7 @@ void lfStart(const char* fileName) {
 
 				} else {
 					fileNumber += 1; // increase the file number here
-					xmprintf(0, "lfStart next file #%d\r\n", fileNumber);
+					xmprintf(3, "lfStart next file #%d\r\n", fileNumber);
 				}
 			}
 		}
@@ -152,7 +158,7 @@ void lfStart(const char* fileName) {
 		sprintf(fileNameCopy, "log_%d.xq", fileNumber);
 
 	} else {
-		xmprintf(0, "lfStart! %s \r\n", fileName);
+		xmprintf(3, "lfStart! %s \r\n", fileName);
 		strncpy(fileNameCopy, fileName, 64);
 	}
 
@@ -166,36 +172,38 @@ void lfStart(const char* fileName) {
 		feedingFlag = 0;
 		ffErrorCounter = 0;
 		ffOverflowCounter = 0;
+		lfMEssageCounter = 0;
 	enableInterrupts(irq);
 
 	if (!file.open(fileNameCopy, O_CREAT | O_TRUNC | O_WRONLY)) {
 		//sd.errorHalt("file.open failed");
 		lfState = lfSError;
-		xmprintf(0, "cannot open file %s for writing \r\n", fileNameCopy);
+		xmprintf(3, "cannot open file %s for writing \r\n", fileNameCopy);
 		return;
 	}
 	if (!file.preAllocate(fileSize)) {
 		//sd.errorHalt("file.preAllocate failed");
 		lfState = lfSError;
-		xmprintf(0, "cannot preallocate space for log file; card full?\r\n");
+		xmprintf(3, "cannot preallocate space for log file; card full?\r\n");
 		return;
 	}
 	lfWriting = true;
 	lfState = lfSGood;
-	xmprintf(0, "log started\r\n");
+	xmprintf(3, "log started\r\n");
 }
 
 void lfStop() {
+	xmprintf(3, "stopping the log file \r\n");
 	if (!lfWriting) {
-		xmprintf(0, "not writing now \r\n");
+		xmprintf(3, "not writing now \r\n");
 	}
 	if (!sdStarted) {
-		xmprintf(0, "sd card didnt started \r\n");
+		xmprintf(3, "sd card didnt started \r\n");
 		return;
 	}
 
 	if (lfState != lfSGood){ 
-		xmprintf(0, "state not good \r\n");
+		xmprintf(3, "state not good \r\n");
 		return;
 	}
 	int n, bs;
@@ -219,7 +227,7 @@ void lfStop() {
 		lfState = lfSError;
   	}
 	file.close();
-	xmprintf(0, "log stopped; fileBytesCounter=%lld\r\n", fileBytesCounter);
+	xmprintf(3, "log stopped; fileBytesCounter=%lld\r\n", fileBytesCounter);
 }
 
 void lfFeed(void* data, int size) {
@@ -249,9 +257,7 @@ void lfFeed(void* data, int size) {
 	feedingFlag = 0;
 }
 
-
 #define  headerSize (sizeof(xqm::MsgHeader))
-static volatile unsigned char counter = 0;  // log file message counter
 
 /** THIS FUNCTION BELOW  SHOULD BE REENTRANT!!!!
  *  It is called simultaneosly from different interupt levels
@@ -266,7 +272,7 @@ int lfSendMessage(const unsigned char* data, unsigned char type, unsigned short 
 	int ret = size + headerSize + 2;  //  size of all the message
 	unsigned char cr[2];
 	unsigned char crc = 0;
-	unsigned char counterCopy = counter; //  COUNTER MAY BE NOT CORRECT !!!!
+	unsigned char counterCopy = lfMEssageCounter; //  COUNTER MAY BE NOT CORRECT !!!!
 	// the solution could be to move counter read/increment inside interrupt disable block,
 	// but this is not good since we have to disable interrupts for longer time..
 	// TODO: create better solution
@@ -291,7 +297,7 @@ int lfSendMessage(const unsigned char* data, unsigned char type, unsigned short 
 	put_rb_s(&rb, (const unsigned char*)(&hdr), headerSize); 	// add header
 	put_rb_s(&rb, data, size); 									// add message body
 	put_rb_s(&rb, cr, 2); 										// add message tail
-	++counter;
+	lfMEssageCounter += 1;
 	enableInterrupts(irq);
 	// ***************************************************************
 	return ret;

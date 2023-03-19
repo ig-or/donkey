@@ -28,7 +28,7 @@ int ttSetup() {
 	setupADC();
 	//////analogReadAveraging(8);
 	
-	//lfInit();  //  SD log file init; will set up sdStarted = true; if SD card present
+	lfInit();  //  SD log file init; will set up sdStarted = true; if SD card present
 	ethSetup();
 
 	//irSetup(); // IR receiver setup

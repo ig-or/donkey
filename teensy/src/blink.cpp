@@ -16,7 +16,7 @@
 #include "motors.h"
 #include "ir.h"
 #include "sr04.h"
-//#include "logfile.h"
+#include "logfile.h"
 #include "eth.h"
 #include "power.h"
 
@@ -145,7 +145,7 @@ extern "C" int main(void) {
 		//}
 
 		ethLoop();		//  ethernet
-		//lfProcess();  	//  log file
+		lfProcess();  	//  log file
 
 		//yield();
 		//continue;

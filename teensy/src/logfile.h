@@ -15,7 +15,7 @@ extern volatile LFState lfState; ///< lfSGood if SD state is good
 
 ///  init log file
 void lfInit();
-/**   start log to file 
+/**   start log to file.
  */ 
 void lfStart(const char* fileName = nullptr);
 /// stop log
@@ -34,15 +34,24 @@ template<class T> int lfSendMessage(const T* info) {
 }
 
 /** save info to the log file.
- *  call this not from the interrupt.
+ *  call this NOT from the interrupt.
  * */
 void lfProcess();
 
 void lfPrint();
+
+/**
+ *   print out the file list.
+ * 
+*/
 void lfFiles();
+
+/**
+ * transmit the file.
+*/
 int lfGetFile(char* name);
 
-extern volatile ByteRoundBuf rb;
+extern /*volatile */ByteRoundBuf rb;
 static const int rbSize = 4096; //8192;
 extern unsigned char __attribute__((aligned(32))) rbBuf[rbSize];
 

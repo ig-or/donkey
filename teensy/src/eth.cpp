@@ -64,6 +64,7 @@ void ethSetInfoHandler(EthInfoHandler h) {
 void ethSetup() {
 	// start the Ethernet
 	xmprintf(1, "eth starting ....  ");
+	clientConnected = false;
 	uint8_t mac[6];
 	teensyMAC(mac);
 	xmprintf(17, "mac %s  ", macs);
@@ -77,11 +78,15 @@ void ethSetup() {
 		return;
 	}
 	linkStatus = Ethernet.linkStatus();
-	if (linkStatus == LinkOFF) 	{
+	switch (linkStatus)  {
+	case LinkOFF:
+	case Unknown:
 		xmprintf(17, "  sEthNoLink   ");
 		ethStatus = sEthNoLink;
-	}
-
+		break;
+	}; 
+		
+	
 	// start UDP
 	//udp.begin(localPort);
 	// start the server
@@ -111,16 +116,16 @@ void ethLoop() {
 		linkStatus = currentLinkStatus;
 		xmprintf(1, "ETH link status %d \r\n", linkStatus);
 	}
-	if (linkStatus == LinkOFF) {
+	if ((linkStatus == LinkOFF) || (linkStatus == Unknown)) {
 		ethStatus = sEthNoLink;
 		if (clientConnected) {
 			clientConnected = false;
-			xmprintf(1, "ETH client disconnected 3 \r\n");
+			xmprintf(1, "ETH client disconnected 3;  linkStatus = %d\r\n", linkStatus);
 		}
 		return;
 	}
 
-	return;
+	//return;
 
 	if (!client) {
 		client = server.available();
