@@ -38,11 +38,14 @@ function drawc100(file)
 	qtitle("motor control")
 
 	qfigure()
-	qplot1(t, c100[:, 6], "us_distance_mm", "-eb", 3)
+	qplot1(t, c100[:, 6], "us_distance_mm1", "-ec", 5)
+	qplot1(t, c100[:, 9], "us_distance_mm2", "-eb", 3)
 	qtitle("distance fron the sensor");
 
 	qfigure()
-	qplot1(t, c100[:, 7], "quality", "-eb", 3)
+	qplot1(t, c100[:, 12], "mcState", "-ey", 7)
+	qplot1(t, c100[:, 7], "quality1", "-ec", 5)
+	qplot1(t, c100[:, 10], "quality2", "-eb", 3)
 	qtitle("quality");
 
 end

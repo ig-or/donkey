@@ -6,6 +6,7 @@
 #include "elapsedMillis.h"
 #include "ttpins.h"
 #include "teetools.h"
+#include "xmfilter.h"
 
 //int delta = 2;
 
@@ -24,7 +25,33 @@ static const int motorMinMks = 1305;      //  full gas
 static const int shiftMaxMks = 1780;
 static const int shiftMinMks = 1294;
 
+enum CalibrationState {
+	rcNo,
+	rcGettingMiddle,
+	rcMovingDown,
+	rcMovingDown2,
+	rcGettingDown, 
+	rcMovingUp,
+	rcMovingUp2,
+	rcGettingUp,
+	rcComplete
+};
 
+struct RCCalibrationInfo {
+	int center = 0;
+	int minimum = 0;
+	int maximum = 0;
+	void rciReset() { center = 0; minimum = 0; maximum = 0; }
+};
+
+static bool calibrationNow = false;
+static unsigned int calibrationStartTimeMs = 0;
+static unsigned int calibrationStateTimeMs = 0;
+static unsigned int calibrationDataTimeMs = 0;
+static int calibrationDataCounter = 0;
+CalibrationState cState = rcNo;
+RCCalibrationInfo rccInfo;
+XCov1 xcov;
 
 struct ReceiverChannel {
 	int chID = 0; 
@@ -33,6 +60,7 @@ struct ReceiverChannel {
 	volatile  long cchPrev = 0; //the number of microseconds of the pulse
 	volatile bool working = false;
 	elapsedMicros chTime;
+	//bool callbackEnabled = true;
 	recvChangeT cb = 0;		//  callback function
 	//volatile unsigned int lastSignalTimeMs = 0;
 	int pin = 0;
@@ -53,7 +81,7 @@ void ReceiverChannel::rcvUpdate() {
 		//lastSignalTimeMs = millis();
    }   else { 
 		cch = chTime;
-		if (cb != 0) {
+		if (cb != 0 &&  !calibrationNow) {
 			int v = map(cch, rangeMinMks, rangeMaxMks, 0, 180);
 			cb(v);
 
@@ -133,4 +161,152 @@ void setReceiverUpdateCallback(recvChangeT f, int chNum) {
 	case 2: ch[1].cb = f; break;
 	default: xmprintf(3, "setReceiverUpdateCallback error \n");
 	};
+}
+
+void startReceiverCalibrate() {
+	//ch[1].callbackEnabled = false;
+	calibrationNow = true;
+	calibrationStartTimeMs = millis();
+	calibrationStateTimeMs = calibrationStartTimeMs;
+	calibrationDataTimeMs = calibrationStartTimeMs;
+	cState = rcGettingMiddle;
+	calibrationDataCounter = 0;
+	rccInfo.rciReset();
+	xmprintf(3, "starting receiver calibration..  please wait \r\n");
+}
+
+static const int rcINterval = 50;
+
+void calibrationFailed() {
+	xmprintf(3, "calibration failed \r\n");
+	cState = rcNo;
+	calibrationNow = false;
+
+}
+void receiverProcess(unsigned int now) {
+	if (!calibrationNow) {
+		return;
+	}
+	if ((cState == rcNo) || (cState == rcComplete)) {
+		return;
+	}
+
+	if ((now - calibrationDataTimeMs) < rcINterval) {
+		return;
+	}
+	bool irq = disableInterrupts();
+	int v = ch[1].cch;
+	enableInterrupts(irq);
+
+	switch (cState) {
+		case rcGettingMiddle:
+			rccInfo.center += v;
+			calibrationDataCounter += 1;
+			if (calibrationDataCounter >= 25)  {
+				rccInfo.center /= calibrationDataCounter;
+				cState = rcMovingDown;
+				calibrationStateTimeMs = now;
+				calibrationDataCounter  = 0;
+				xmprintf(3, "press the gas pedal \r\n");
+			}
+		break;
+		case rcMovingDown:
+			if ((now - calibrationStateTimeMs) > 5000) {
+				calibrationFailed();	
+				break;		
+			}
+			if ((rccInfo.center - v) > 100) {
+				calibrationStateTimeMs = now;
+				xcov.reset();
+				calibrationDataCounter  = 0;
+				cState = rcMovingDown2;
+				xmprintf(3, " -> rcMovingDown2 \r\n");
+			}
+		break;
+		case rcMovingDown2:
+			if ((now - calibrationStateTimeMs) > 5000) {
+				calibrationFailed();	
+				break;		
+			}
+			xcov.add(v);
+			calibrationDataCounter  += 1;
+			if (calibrationDataCounter >= 20) {
+				float std = sqrt(xcov.cov());
+				xmprintf(3, "std = %.4f \r\n");
+				calibrationDataCounter  = 0;
+				if (std > TWO) { //  try one more time
+					xcov.reset();
+					xmprintf(3,  "   not yet \r\n");
+				} else {
+					cState = rcGettingDown;
+					calibrationStateTimeMs = now;
+					xmprintf(3, " -> rcGettingDown \r\n");
+				}
+			}
+
+		break;
+		case rcGettingDown:
+			rccInfo.minimum += v;
+			calibrationDataCounter += 1;
+			if (calibrationDataCounter >= 25)  {
+				rccInfo.minimum /= calibrationDataCounter;
+				cState = rcMovingUp;
+				calibrationStateTimeMs = now;
+				calibrationDataCounter  = 0;
+				xmprintf(3, "press the gas pedal backward \r\n");
+			}
+		break;
+		case rcMovingUp:
+			if ((now - calibrationStateTimeMs) > 10000) {
+				calibrationFailed();	
+				break;		
+			}
+			if ((v - rccInfo.center) > 100) {
+				calibrationStateTimeMs = now;
+				xcov.reset();
+				calibrationDataCounter  = 0;
+				cState = rcMovingUp2;
+				xmprintf(3, " -> rcMovingUp2 \r\n");
+			}
+		break;
+		case rcMovingUp2:
+			if ((now - calibrationStateTimeMs) > 10000) {
+				calibrationFailed();	
+				break;		
+			}
+			xcov.add(v);
+			calibrationDataCounter  += 1;
+			if (calibrationDataCounter >= 20) {
+				float std = sqrt(xcov.cov());
+				xmprintf(3, "std = %.4f \r\n");
+				calibrationDataCounter  = 0;
+				if (std > TWO) { //  try one more time
+					xcov.reset();
+					xmprintf(3,  "   not yet \r\n");
+				} else {
+					cState = rcGettingUp;
+					calibrationStateTimeMs = now;
+					xmprintf(3, " -> rcGettingUp \r\n");
+				}
+			}
+		break;
+		case rcGettingUp:
+			rccInfo.maximum += v;
+			calibrationDataCounter += 1;
+			if (calibrationDataCounter >= 25)  {
+				rccInfo.maximum /= calibrationDataCounter;
+				cState = rcComplete;
+				calibrationStateTimeMs = now;
+				calibrationDataCounter  = 0;
+				calibrationNow = false;
+				xmprintf(3, "Calibration complete! data: [%d  %d  %d]\r\n", rccInfo.minimum, rccInfo.center, rccInfo.maximum);
+			}
+		break;
+		case rcComplete:
+
+		break;
+
+	};
+
+
 }

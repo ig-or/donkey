@@ -146,6 +146,7 @@ extern "C" int main(void) {
 
 		ethLoop();		//  ethernet
 		lfProcess();  	//  log file
+		receiverProcess(msNow);
 
 		//yield();
 		//continue;

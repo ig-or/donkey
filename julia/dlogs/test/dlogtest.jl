@@ -8,7 +8,7 @@ using xqdata
 
 
 #startXqLoader(0, libFile = raw"C:\Users\ISandler\space\donkey\lib-vs-x64\release\xqloader.dll");
-file = raw"C:\Users\ISandler\space\donkey\lib-vs-x64\release\log_6.c100"
+file = raw"C:\Users\ISandler\space\donkey\lib-vs-x64\release\log_13.c100"
 
 c100 = xqget(file, 1000.0);
 size(c100)

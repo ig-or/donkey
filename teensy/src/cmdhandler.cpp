@@ -102,6 +102,13 @@ int processTheCommand(const char* s, int size) {
 		enableMotor(0);
 	} else if (strcmp(s, "cprint") == 0) {
 		controlPrint();
+	} else if (strcmp(s, "cprintrcv0") == 0) {
+		cPrintRcvInfo(false);
+	} else if (strcmp(s, "cprintrcv1") == 0) {
+		cPrintRcvInfo(true);
+	}
+	else if (strcmp(s, "rcalib") == 0) {
+		startReceiverCalibrate();
 	} 
 
 

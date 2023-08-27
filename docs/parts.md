@@ -66,6 +66,10 @@ Convenient to adjust the steering trim, the throttle trim, steering rate
    * 
 
 ####  another lidar
+LDROBOT D300 LiDAR Kit https://www.robotshop.com/products/ldrobot-d300-lidar-kit
+1x Lidar LD19
+
+
 
 #### teency 4.1 board
 
@@ -79,11 +83,18 @@ steps down 5V signals to 3.3V AND steps up 3.3V to 5V at the same time
 #### small parts
 
  * dc-dc pololu 5V 500 mA step-Down voltage regilator; D24V5F5, to power teensy board from the BEC on motor control unit
+ * Silicone Bumpers - Large (10x16.5mm, 4 pack)  https://www.sparkfun.com/products/10594
+ * LDR (PhotoCell) Light Dependent Resistor (5mm Diameter) https://www.robotshop.com/products/ldr-photocell-light-dependent-resistor-5mm-diameter
+
 
 ####  IMU 'Memsic' IMU381
 
 
 #### UBLOX GPS receiver + external antenna
+NEO-7M GPS Module for Arduino   https://www.robotshop.com/products/neo-7m-gps-module-arduino
+https://www.robotshop.com/products/glonass-159-ghz-gps-active-antenna-jcl002
+GLONASS 1.59 GHz GPS Active Antenna JCL002
+
 
 #### 2x ultrasound sensor
 Ultrasonic Distance Sensor - HC-SR04    

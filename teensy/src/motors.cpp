@@ -20,10 +20,10 @@ static const int steerMinStopMks = 1540;
 static const int steerMaxStopMks = 1550;
 static const int steerMinMks = 1294;
 
-static const int motorMaxMks = 1740;
-static const int motorMaxStopMks = 1560;
-static const int motorMinStopMks = 1540;
-static const int motorMinMks = 1259;
+static const int motorMaxMks = 1750;
+//static const int motorMaxStopMks = 1560;
+//static const int motorMinStopMks = 1540;
+static const int motorMinMks = 1350;
 
 static const int shiftMaxMks = 2200;
 static const int shiftMinMks = 800;
@@ -89,6 +89,7 @@ void moveTheVehicle(int a) {
 	if (abs(a - prevMotorValue) > db) {
 		prevMotorValue = a;
 		motor.write(a);
+		xmprintf(1, " a=%d \r\n", a);
 	}
 }
 

@@ -5,6 +5,7 @@
 void control100();
 void controlSetup();
 void controlPrint();
+void cPrintRcvInfo(bool print);
 
 /**
  *  \param u  0 - disable the motor.

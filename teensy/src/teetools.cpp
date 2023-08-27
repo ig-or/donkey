@@ -72,13 +72,14 @@ void logSetup(const char* fileName) {
 
 }
 
-static uint32_t sprintCounter = 0;
-static const int sbSize = 512;
-static char sbuf[sbSize];
+static volatile uint32_t sprintCounter = 0;
+static const int sbSize = 128; // 512;
+//static char sbuf[sbSize];
 
 int ptf(FsFile& file, const char* s, ...) {
 	va_list args;
 	va_start(args, s);
+	char sbuf[sbSize];
 	int ok;
 
 	ok = vsnprintf_P(sbuf, sbSize - 1, s, args);
@@ -109,6 +110,7 @@ int xmprintf(int dst, const char* s, ...) {
 	va_list args;
 	va_start(args, s);
 	int ok;
+	char sbuf[sbSize];
 
 	int bs = 0;
 
@@ -166,6 +168,7 @@ int  xm_printf(const char * s, ...) {
 	va_list args;
 	va_start(args, s);
 	int ok;
+	char sbuf[sbSize];
 
 	int bs = 0;
 

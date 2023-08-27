@@ -28,6 +28,10 @@ typedef void (*recvChangeT)(int);
 
 void receiverSetup();
 void receiverPrint();
+
+void startReceiverCalibrate();
+
+void receiverProcess(unsigned int now);
 //unsigned long rcv_ch1();
 //unsigned long rcv_ch2();
 

@@ -88,8 +88,8 @@ void intervalFunction() {
 void controlSetup() {
 	xmprintf(1, "control setup ... .. ");
 	mcState = mcUnknown;
-	enableMotor(mmStop);
-	mpf.pfInit(ca3_08_50, cb3_08_50);
+	enableMotor(mmRunning_08);
+	//mpf.pfInit(ca3_08_50, cb3_08_50);
 	setReceiverUpdateCallback(rcv_ch1, 1);
 	setReceiverUpdateCallback(rcv_ch2, 2);
 
@@ -123,6 +123,11 @@ void processReceiverState(unsigned int now) {
 	}
 }
 
+
+const int zeroRate = 90;
+const int stopRate = 19;
+const int motorRange = zeroRate - stopRate;
+
 void enableMotor(int u) {
 	bool irq = disableInterrupts();
 	mMode = static_cast<MotorMode>(u);
@@ -133,12 +138,10 @@ void enableMotor(int u) {
 		case mmRunning_25: 	mpf.pfInit(ca3_25_50, cb3_25_50);	 break; 	//  cut off 2.5 Hz and sampling rate = 50 HZ
 		case mmShiftTest:   mpf.pfInit(ca3_08_50, cb3_08_50);	 break; 	
 	};
+	//mpf.pfNext(zeroRate);
 	enableInterrupts(irq);
 }
 
-const int zeroRate = 90;
-const int stopRate = 20;
-const int motorRange = zeroRate - stopRate;
 
 /**
  * \param a the speed, from 0 to 180.  90 is stop.
@@ -186,30 +189,50 @@ int wallDetector(int a, unsigned int timestamp) {
 	}
 
 	// apply the speed limit
-	SR04Info us;
+	SR04Info us1;
+	SR04Info us2;
+	SR04Info& us = us2;
 	int minmax = 0, aa = 90;
-	const int maxDist = 1400; // [mm]
+	const float maxDist = 1400.0; // [mm]
+	const float minDist = 120; // mm
 	switch (mcState) {
 	case mcForward:
-		getSR04Info(0, us);
-		if ((us.quality == 1) && (us.distance_mm < maxDist)) { // have some measurement
-			minmax = zeroRate - stopRate - (motorRange * us.distance_mm) / maxDist;
-			aa = (a < minmax) ? minmax : a;
+		getSR04Info(0, us1);
+		getSR04Info2(0, us2);
+		if (us.quality == 1) {  // have some measurement
+			if (us.distance_mm < minDist) { 
+				aa = zeroRate;
+			} else 	if (us.distance_mm < maxDist) { 
+				minmax = zeroRate - stopRate - (motorRange * us.distance_mm) / maxDist;
+				aa = (a < minmax) ? minmax : a;
+			} else {
+				aa = a;
+			}
 		} else {
 			aa = a;
 		}
 		break;
 	case mcBackward:
-		getSR04Info(1, us);
-		if ((us.quality == 1) && (us.distance_mm < maxDist)) { // have some measurement
-			minmax = zeroRate + stopRate + (motorRange * us.distance_mm) / maxDist;
-			aa = (a > minmax) ? minmax : a;
+		getSR04Info(1, us1);
+		getSR04Info2(1, us2);
+		//us.quality = 0;
+		if (us.quality == 1) {
+			if (us.distance_mm < minDist) { 
+				aa = zeroRate;
+			} else 	if (us.distance_mm < maxDist) { // have some measurement
+				minmax = zeroRate + stopRate + (motorRange * us.distance_mm) / maxDist;
+				aa = (a > minmax) ? minmax : a;
+				//xmprintf(17, "~");
+			} else {
+				aa = a;
+			}
 		} else {
 			aa = a;
 		}
 		break;
-	default: aa = a;
+	default: aa = zeroRate;
 	};
+	//xmprintf(17, "#");
 	if (wdCounter % 50 == 0) {
 		//xmprintf(3, "wallDetector mcState=%d;  a = %d;  aa = %d;  us.quality = %d;  us.distance_mm = %d; minA = %d; maxA = %d \r\n", 
 		//mcState, a, aa, us.quality, us.distance_mm, minA, maxA);
@@ -218,7 +241,7 @@ int wallDetector(int a, unsigned int timestamp) {
 	//   lets run the low pass filter
 	long bb;
 	if (mMode == mmStop) {
-		bb = std::lround(mpf.pfNext(ZERO));
+		bb = std::lround(mpf.pfNext(zeroRate));
 	} else {
 		bb = std::lround(mpf.pfNext(aa));
 	}
@@ -230,13 +253,21 @@ int wallDetector(int a, unsigned int timestamp) {
 		info.timestamp = timestamp;
 		info.mcState = static_cast<char>(mcState);
 		info.minmax = minmax;
-		info.us_distance_mm = us.distance_mm;
-		info.us_quality = us.quality;
-		info.us_timestamp = us.measurementTimeMs;
+
+		info.us_distance_mm1 = us1.distance_mm;
+		info.us_quality1 = us1.quality;
+		info.us_timestamp1 = us1.measurementTimeMs;
+
+		info.us_distance_mm2 = us2.distance_mm;
+		info.us_quality2 = us2.quality;
+		info.us_timestamp2 = us2.measurementTimeMs;
+
+		info.mcState = mcState;
 
 		lfSendMessage<xqm::Control100Info>(&info);
 
 	wdCounter += 1;
+	//xmprintf(17, "@");
 	return bb;
 }
 
@@ -244,18 +275,23 @@ void controlFromTransmitter(unsigned int now) {
 	steering(rcvInfoCopy[0].v);
 
 	int a = rcvInfoCopy[1].v;
-	int aa = wallDetector(a, now);
-	if ((a != aa) != veloLimit) {
-		veloLimit = a != aa;
-		xmprintf(3, "veloLimit %s \r\n", veloLimit ? "start" : "stop");
-	}
+	if (a < 0) { a = 0; }
+	if (a > 179) { a = 179; }
+	int bb = wallDetector(a, now);
+	//xmprintf(17, "^");
+	//if ((a != bb) != veloLimit) {
+	//	veloLimit = a != bb;
+		//xmprintf(3, "veloLimit %s \r\n", veloLimit ? "start" : "stop");
+	//}
 	
 	//moveTheVehicle(rcvInfoCopy[1].v);
-	moveTheVehicle(aa);
+	moveTheVehicle(bb);
+	//xmprintf(17, "&");
 }
 
 static unsigned int controlCounter = 0;
 volatile char controlIsWorkingNow = false;
+static bool printReceiverValues = false;
 void control100() {
 	//return;
 	if (controlIsWorkingNow != 0) {
@@ -267,14 +303,28 @@ void control100() {
 	processReceiverState(now);
 	if (chState[0] == chYes && chState[1] == chYes) {
 		controlFromTransmitter(now);
+	} else {
+		int bb = std::lround(mpf.pfNext(zeroRate));
+		moveTheVehicle(bb);
 	}
 	
 	controlIsWorkingNow = 0;
 	controlCounter += 1;
+	if (controlCounter  % 50 == 0) {
+		if (printReceiverValues ) {
+			xmprintf(3, "rcv: [%d, %d]  \r\n", rcvInfoCopy[0].v, rcvInfoCopy[1].v);
+		}
+	}
+	//xmprintf(17, "#");
 }
 
 void controlPrint() {
-	xmprintf(3, "control100(%u)   \r\n", controlCounter);
+	xmprintf(3, "control100(%u)  controlFromTransmitter: %s; rcv: [%d, %d]  \r\n", 
+		controlCounter, (chState[0] == chYes && chState[1] == chYes) ? "yes" : "no",
+		rcvInfoCopy[0].v, rcvInfoCopy[1].v);
+}
+void cPrintRcvInfo(bool print) {
+	printReceiverValues = print;
 }
 
 

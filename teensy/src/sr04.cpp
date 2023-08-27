@@ -83,7 +83,7 @@ int getMedianIndex(SR04Info bb[SR04::hInfoCount], int ones, int oneIndex[SR04::h
 
 }
 */
-/*
+
 void getSR04Info2(char sid, SR04Info& info) {
 	if (sid < 0 || sid >= nsr) {	//  check the args
 		return;
@@ -92,11 +92,26 @@ void getSR04Info2(char sid, SR04Info& info) {
 	//  copy all the history into 'b'
 	SR04Info b[SR04::hInfoCount];
 	int i, j;
+	//return;
+	//xmprintf(17, "1");
+	int num;
 	bool irq = disableInterrupts();
-		for (i = 0; i < SR04::hInfoCount; i++) {
-			b[i] = sr04[sid].hInfo[SR04::hInfoCount - 1 - i]; // put newest info in the beginning of 'b'
+		num = sr04[sid].hInfo.num;
+		if (num == 0) {
+			enableInterrupts(irq);
+			info.quality = 0;
+			info.distance_mm = 4000;
+			info.measurementTimeMs = millis();
+			return;
+		} else {
+			for (i = 0; i < num; i++) {
+				b[i] = sr04[sid].hInfo[num - 1 - i]; // put newest info in the beginning of 'b'
+			}
 		}
 	enableInterrupts(irq);
+	for (i = num; i < SR04::hInfoCount; i++) {
+		b[i].quality = 0;    b[i].measurementTimeMs = 0; b[i].distance_mm = 4000;
+	}
 
 	//  find out the indices where we have some real measurement
 	char ones = 0;								// number of the good measurements
@@ -107,12 +122,18 @@ void getSR04Info2(char sid, SR04Info& info) {
 			ones += 1;
 		}
 	}
+	//return;
+	//xmprintf(17, "3");
 	auto f = [=](int c, int d) -> bool {
 		return b[c].distance_mm > b[d].distance_mm; 
 	};
+	// return;
+	//xmprintf(17, "4(%d) ", ones);
+	
 	switch (ones) {
 		case 0: 								//  everything is bad
 			info = b[0]; 						//just return the last measurement
+			//xmprintf(17, " q=%d \r\n", info.quality);
 			break;
 		case 1: 								// only one good measurement: return it
 			info = b[oneIndex[0]];
@@ -123,20 +144,30 @@ void getSR04Info2(char sid, SR04Info& info) {
 			info.measurementTimeMs = (b[oneIndex[0]].measurementTimeMs + b[oneIndex[1]].measurementTimeMs) / 2;
 			break;
 		case 3: 								//  we can calculate the median
-			j = opt_med3f((int*)(oneIndex), f);
+			j = opt_med3f(oneIndex, f);
 			info = b[j];
 			break;
 		case 4:									//  return the median from 3 LAST measurements
-			j = opt_med3f((int*)(oneIndex), f);
+			j = opt_med3f(oneIndex, f);
 			info = b[j];
 			break;
-		default:  								//  everything is good
-			j = opt_med5f((int*)(oneIndex), f);
+		case 5:  								//  everything is good
+			j = opt_med5f(oneIndex, f);
 			info = b[j];
+				//irq = disableInterrupts();
+				//xmprintf(17, "sid=%d ones=%d q=%d j=%d; bq=%d  q0=%d, d0=%d, t0=%u\r\n",
+				//	sid, ones, info.quality, b[j].quality, sr04[sid].hInfo[0].quality, sr04[sid].hInfo[0].distance_mm, sr04[sid].hInfo[0].measurementTimeMs);
+				//enableInterrupts(irq);
+			break;
+		default: 
+			info = b[0]; 						//just return the last measurement
+			xmprintf(3, "ones = %d \r\n", ones);
 			break;
 	};
+
+	//xmprintf(17, "5");
 }
-*/
+
 
 void stopPingImpulse() {
 	digitalWriteFast(sr04[currentID].trigPin, LOW);
@@ -197,6 +228,9 @@ FASTRUN void usEcho(char usIndex) {
 				sr.info.distance_mm = (dt * 10) / US_ROUNDTRIP_CM;
 				sr.hInfo.put(sr.info);
 				errorsCounter[4] += 1;
+
+				//xmprintf(1, "usIndex=%d;  q0 = %d  q=%d\r\n", usIndex, sr.info.quality, sr.hInfo[0].quality);
+
 				break;
 			}
 			if (dt >= sr.maxEchoTimeMks) { //  too far away. this is not an error
@@ -204,6 +238,9 @@ FASTRUN void usEcho(char usIndex) {
 				sr.info.quality = 2;   //  far away ?
 				sr.info.distance_mm =  (dt * 10) / US_ROUNDTRIP_CM;
 				sr.hInfo.put(sr.info);
+
+				//xmprintf(1, "usIndex=%d;  q0 = %d  q=%d\r\n", usIndex, sr.info.quality, sr.hInfo[0].quality);
+
 				break;
 			}
 			// ok, we have something:
@@ -211,6 +248,9 @@ FASTRUN void usEcho(char usIndex) {
 			sr.info.quality = 1;			// normal measurement
 			sr.info.measurementTimeMs = millis() - ((dt / 2000));
 			sr.hInfo.put(sr.info);
+
+			//xmprintf(1, "usIndex=%d;  q0 = %d; d0=%d  q=%d, d=%d\r\n", usIndex, sr.info.quality, sr.info.distance_mm, sr.hInfo[0].quality, sr.hInfo[0].distance_mm);
+
 		} else {    // ping started unexpectedly
 			pingStatus = -3;
 			errorsCounter[9] += 1;
@@ -293,6 +333,13 @@ void usStartPing(char sid) {
 	bool irq = disableInterrupts();
 		currentID = sid;
 		pingStatus = 0;
+		if (sid >= 0 && sid < 2) {
+			sr04[sid].hInfo.clear();
+			sr04[sid].info.quality = 0;
+			sr04[sid].info.distance_mm = 4000;
+			sr04[sid].info.measurementTimeMs = millis();
+		}
+
 	enableInterrupts(irq);
 }
 
