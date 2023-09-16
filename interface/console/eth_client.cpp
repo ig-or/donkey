@@ -183,17 +183,23 @@ void EthClient::process(boost::system::error_code ec, std::size_t len) {
 		printf("EthClient::process: len = %zd\r\n", len);
 		return;
 	}
-	if (ping1 != 0) {
-		ping1();
-	}
-	if ((len >= 3) && (strncmp(buf, "tee", 3) == 0)) {
+	//if (ping1 != 0) {
+	//	ping1();
+	//}
+	if ((len >= 3) && (strncmp(buf, "tee", 3) == 0)) {   //   connection accepted
 		connected = true;
 		std::lock_guard<std::mutex> lk(mu);
 		cv.notify_all();
 		//printf("tee!\n");
 		
 	} else if ((len >= 4) && (strncmp(buf, "ping", 4) == 0)) { //  ping
-
+		unsigned char id;
+		unsigned int time;
+		memcpy(&time, buf + 4, 4);
+		id = (unsigned char)(buf[8]);
+		if (ping1 != 0) {
+			ping1(id, time);
+		}
 	} else if (readingTheLogFile != 0) {
 		assert(len < bufSize);
 		buf[bufSize-1] = 0;

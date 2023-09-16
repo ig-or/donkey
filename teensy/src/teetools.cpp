@@ -73,7 +73,7 @@ void logSetup(const char* fileName) {
 }
 
 static volatile uint32_t sprintCounter = 0;
-static const int sbSize = 128; // 512;
+static const int sbSize = 256; // 512;
 //static char sbuf[sbSize];
 
 int ptf(FsFile& file, const char* s, ...) {
@@ -138,7 +138,7 @@ writeHere:
 	if (eos > (sbSize - 3)) {
 		return 0;
 	}
-
+	//   this '\r' things below is for minicom terminal software
 	if (eos == 1 && (sbuf[0] == '\n')) {
 		sbuf[0] = '\r'; sbuf[1] = '\n';  sbuf[2] = 0; 
 	} else {

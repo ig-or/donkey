@@ -69,27 +69,27 @@ int processTheCommand(const char* s, int size) {
 
 	if (strcmp(s, "us") == 0 ) {
 		usPrint();
-	} else 	if (strcmp(s, "imu") == 0) {
+	} else 	if (strcmp(s, "imu") == 0) {			// print IMU status
 		memsicPrint();
-	} else 	if (strcmp(s, "eth") == 0) {
+	} else 	if (strcmp(s, "eth") == 0) {			//  print out ethernet connection status
 		ethPrint();
-	} else 	if (strncmp(s, "log", 3) == 0) {
+	} else 	if (strncmp(s, "log", 3) == 0) {		// start logging
 		if (size > 4) { //   use log file name
-			lfStart(s + 4);
+			lfStart(s + 4);							//		with optional file name
 		} else {
-			lfStart();
+			lfStart();								//		with default file name
 		}
-	} else 	if (strcmp(s, "lstop") == 0) {
+	} else 	if (strcmp(s, "lstop") == 0) {			// stop logging
 		lfStop();
-	} else  if (strcmp(s, "lprint") == 0) {
+	} else  if (strcmp(s, "lprint") == 0) {			// print the list of all the files on teensy local SD card
 		lfPrint();
 	}else  if (strcmp(s, "dir") == 0) {
 		lfFiles();
-	} else if (strncmp(s, "get ", 4) == 0) {
+	} else if (strncmp(s, "get ", 4) == 0) {		//  download the file from Teensy SD card
 		lfGetFile((const char*)(s + 4));
-	} else 	if (strcmp(s, "batt") == 0) {
+	} else 	if (strcmp(s, "batt") == 0) {			// print battery status
 		batteryPrint();
-	} else if (strncmp(s, "mstart", 6) == 0) {	
+	} else if (strncmp(s, "mstart", 6) == 0) {		//    enable motor control
 		int m;
 		int k = sscanf(s + 6, "%d", &m);
 		if (k == 1) {
@@ -98,16 +98,16 @@ int processTheCommand(const char* s, int size) {
 		} else {
 			xmprintf(3, "motor : k = %d \r\n", k);
 		}
-	} else if (strcmp(s, "mstop") == 0) {
+	} else if (strcmp(s, "mstop") == 0) {			//   disable motor control
 		enableMotor(0);
-	} else if (strcmp(s, "cprint") == 0) {
+	} else if (strcmp(s, "cprint") == 0) {			//   print control alg statistics
 		controlPrint();
-	} else if (strcmp(s, "cprintrcv0") == 0) {
+	} else if (strcmp(s, "cprintrcv0") == 0) {		// disable printing the rcv statiscics
 		cPrintRcvInfo(false);
 	} else if (strcmp(s, "cprintrcv1") == 0) {
 		cPrintRcvInfo(true);
 	}
-	else if (strcmp(s, "rcalib") == 0) {
+	else if (strcmp(s, "rcalib") == 0) {			//  start receiver calibration
 		startReceiverCalibrate();
 	} 
 

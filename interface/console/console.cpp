@@ -12,9 +12,18 @@
 
 #include "inproc.h"
 #include "eth_client.h"
+#include <xmroundbuf.h>
 
 EthClient cli;
-std::chrono::time_point<std::chrono::system_clock> pingTime;
+std::chrono::time_point<std::chrono::steady_clock> pingTime;
+
+struct PingInfo {
+	unsigned char id;
+	unsigned int teensyTime;
+	std::chrono::time_point<std::chrono::steady_clock> pcTime;
+};
+
+XMRoundBuf<PingInfo, 10> pingInfo;
 
 void teeData(char* s, int size) {
 	s[size] = 0;
@@ -26,8 +35,13 @@ void inpData(char* s) {
 	cli.do_write(s);
 }
 
-void ping() {
-	pingTime = std::chrono::system_clock::now();
+void ping(unsigned char id, unsigned int time) {
+	pingTime = std::chrono::steady_clock::now();
+	PingInfo pInfo;
+	pInfo.id = id;
+	pInfo.teensyTime = time;
+	pInfo.pcTime = pingTime;
+	pingInfo.put(pInfo);
 }
 
 
@@ -38,7 +52,8 @@ int main(int argc, char *argv[]) {
 
 	
 	using namespace std::chrono_literals;
-	pingTime = std::chrono::system_clock::now();
+	pingInfo.clear();
+	pingTime = std::chrono::steady_clock::now();
 	//printf("console starting .. ");
 	//cli.startClient(teeData);
 	std::thread tcp([&] { cli.startClient(teeData, ping); } );
@@ -61,12 +76,18 @@ int main(int argc, char *argv[]) {
 	while (!inpExitRequest) {
 		std::this_thread::sleep_for(200ms);
 
-		std::chrono::time_point<std::chrono::system_clock> now = std::chrono::system_clock::now();
+		std::chrono::time_point<std::chrono::steady_clock> now = std::chrono::steady_clock::now();
 		long long dt = std::chrono::duration_cast<std::chrono::milliseconds>(now - pingTime).count() ;
-		if (dt > 3500) {
-			printf("ping timeout \r\n");
+		if (dt > 1500) {
+			printf("ping timeout; dt = %llu milliseconds \r\n", dt);
 			inpExitRequest = true;
-			printf("111 \r\n");	
+			//printf("111 \r\n");	
+			printf("ping times: \r\n");
+			for (int i = 0; i < pingInfo.num; i++) {
+				long long dx = std::chrono::duration_cast<std::chrono::milliseconds>(now - pingInfo[i].pcTime).count();
+				printf("%d\t(%u, %u, %llu)   \r\n", i, pingInfo[i].id, pingInfo[i].teensyTime, dx);
+			}
+
 			break;
 		}
 		if (!cli.connected) {
@@ -74,7 +95,7 @@ int main(int argc, char *argv[]) {
 			break;
 		}
 	}
-	printf("222 \r\n");
+	//printf("222 \r\n");
 	inpExitRequest = true;
 	//ungetc('q', stdin);
 	//printf("exiting .. ");

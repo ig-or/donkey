@@ -7,6 +7,7 @@
 #include "rbuf.h"
 #include "xstdef.h"
 #include "cmdhandler.h"
+#include "xmroundbuf.h"
 
 /// @brief  ethernet connection status
 enum EthStatus {
@@ -49,7 +50,30 @@ unsigned char buf2[bufSize2];
 //EthernetUDP udp;
 static EthernetServer server;
 static EthernetClient client;
-EthInfoHandler infoHandler = 0;
+EthInfoHandler infoHandler = 0;  ///< for log file upload
+
+#pragma pack(1)
+struct PingStruct {
+	char hdr[4];
+	unsigned int time;
+	unsigned char id;
+	unsigned char reserved[3];
+};
+#pragma pack()
+PingStruct pingStruct;
+XMRoundBuf<PingStruct, 8> pings; ///< times when we actually send the ping to the client
+
+void printPings() {
+	unsigned int now = millis();
+	const int bs = 256;
+	char b[bs];
+	char* s = b;
+	for (int i = 0; i < pings.num; i++) {
+		s += snprintf(s, b + bs - s, "(%u, %.3f) ", pings[i].id, pings[i].time / 1000.0);
+	}
+	xmprintf(1, "now = %u; pings<%d> = [%s]  %u\r\n", now, pings.num, b, now);
+}
+
 
 void teensyMAC(uint8_t *mac);
 
@@ -95,6 +119,10 @@ void ethSetup() {
 	ethStatus = sEthGood;
 	xmprintf(17, "eth started 1 \r\n");
 	initByteRoundBuf(&rb, buf, rbSize);
+	pings.clear();
+	pingStruct.hdr[0] = 'p'; pingStruct.hdr[1] = 'i'; pingStruct.hdr[2] = 'n'; pingStruct.hdr[3] = 'g'; 
+	pingStruct.id = 0; pingStruct.time = millis(); pingStruct.reserved[0] = 0;
+
 	client = server.available();
 	xmprintf(1, "eth started 2; client=%s \r\n", client ? "yes" : "no");
 }
@@ -114,6 +142,7 @@ void ethLoop() {
 	EthernetLinkStatus currentLinkStatus = Ethernet.linkStatus();
 	if (currentLinkStatus != linkStatus) {
 		linkStatus = currentLinkStatus;
+		pings.clear();
 		xmprintf(1, "ETH link status %d \r\n", linkStatus);
 	}
 	if ((linkStatus == LinkOFF) || (linkStatus == Unknown)) {
@@ -147,6 +176,7 @@ void ethLoop() {
 			bool irq = disableInterrupts();
 			resetByteRoundBuf(&rb);
 			enableInterrupts(irq);
+			pings.clear();
 			xmprintf(1, "ETH client connected \r\n");
 		} else {
 			xmprintf(1, "ETH client disconnected \r\n");
@@ -155,7 +185,7 @@ void ethLoop() {
 			if (infoHandler) {
 				infoHandler(gfFinish, 0); //   stop file transmission if client disconnects
 			}
-
+			printPings();
 			return;
 		}
 	}
@@ -250,16 +280,20 @@ void ethLoop() {
   	} 
 	*/  
 	unsigned int ms = millis();
-	if (((ms - aliveTime) > 1000) && (!infoHandler)) {
+	if (clientConnected && ((ms - aliveTime) > 300) && (!infoHandler)) {
 		aliveTime = ms;
 		//udp.beginPacket("192.168.0.181", 8888);
 		//udp.write("alive\r\n");
 		//udp.endPacket();
-		if (clientConnected) {
-			client.write("ping\n", 6);
-		}
+		//if (clientConnected) {
+		pingStruct.id += 1;
+		pingStruct.time = ms;
+		client.write((const char *)&pingStruct, sizeof(pingStruct));
+
+		//client.write("ping\n", 6);
+		//}
+		pings.put(pingStruct);
 	}
-	
 }
 
 void teensyMAC(uint8_t *mac) {

@@ -1,0 +1,43 @@
+192.168.8.1    		WiFi router  tplink
+
+netgear router
+--------------------------
+IP Address	192.168.1.1
+DNS 192.168.8.1
+
+
+192.168.8.122	or 192.168.1.54 	local PC WiFi
+
+Jetson Nano
+--------------
+user name      don
+password       rezon
+WiFi ip  tpLink  192.168.8.10, netGear   192.168.1.2
+eth0 ip  192.168.0.25
+
+enable forwarding:
+---------------------------
+sudo vim /etc/sysctl.conf
+net.ipv4.ip_forward = 1
+
+https://unix.stackexchange.com/questions/563155/how-to-configure-ip-forwarding
+
+                       
+iptables -A FORWARD -j ACCEPT
+iptables -t nat -s 10.0.2.0/24 -A POSTROUTING -j MASQUERADE
+
+
+
+
+teensy board
+-----------------
+teensy ip "192.168.0.177",  port 8889 
+
+The following would add teensy to the windows network:  from Windows admin cmd: 
+route add 192.168.0.177 mask 255.255.255.255 192.168.8.10 if 18
+
+to print out interface id's  in Windows:     route print
+
+
+
+

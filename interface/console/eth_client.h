@@ -7,7 +7,7 @@
 #include <condition_variable>
 //#include <chrono>
 
-typedef void(*vf)(void);
+typedef void(*vf)(unsigned char, unsigned int);
 typedef void(*data_1)(char* s, int size);
 typedef void(*data_2)(char* s);
 
