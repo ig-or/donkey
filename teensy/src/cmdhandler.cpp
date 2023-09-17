@@ -81,9 +81,9 @@ int processTheCommand(const char* s, int size) {
 		}
 	} else 	if (strcmp(s, "lstop") == 0) {			// stop logging
 		lfStop();
-	} else  if (strcmp(s, "lprint") == 0) {			// print the list of all the files on teensy local SD card
+	} else  if (strcmp(s, "lprint") == 0) {			//   some logging status
 		lfPrint();
-	}else  if (strcmp(s, "dir") == 0) {
+	}else  if (strcmp(s, "dir") == 0) {				// print the list of all the files on teensy local SD card
 		lfFiles();
 	} else if (strncmp(s, "get ", 4) == 0) {		//  download the file from Teensy SD card
 		lfGetFile((const char*)(s + 4));

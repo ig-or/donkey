@@ -7,19 +7,23 @@
 	#include <SDKDDKVer.h>
 	#include <conio.h>
 #else
+	#define USE_NCURSES
 	//#include <termios.h>
+	#ifdef USE_NCURSES
 	#include <ncurses.h>
+	#endif
 	#include <unistd.h>
 #endif
 
 #include <chrono>
 #include <thread>
 #include <iostream>
-
-
+#include <mutex>
+#include <stdarg.h>
 #include "xmroundbuf.h"
 
 volatile bool inpExitRequest = false;
+int xmprintf(const char * s, ...);
 
 #ifdef WIN32
 int getch_1(){
@@ -107,7 +111,7 @@ int kbhit()
 }
 
 */
-
+	//WINDOW *local_win;
 #endif
 
 void inputProc(void(cb)(char*)) {
@@ -122,21 +126,29 @@ void inputProc(void(cb)(char*)) {
 #ifdef WIN32
 
 #else
-	initscr();
-	//raw();
-	cbreak();
-	keypad(stdscr, TRUE);	
+	#ifdef USE_NCURSES
+	int row, col;
+	initscr();  /* Start curses mode 		*/
+	//start_color();			/* Start color 			*/
+	//raw();    /* Line buffering disabled	*/
+	cbreak();   
+	keypad(stdscr, TRUE);	 /* We get F1, F2 etc..		*/
 	timeout(200);
+	//init_pair(1, COLOR_BLACK, COLOR_WHITE);
+	//attron(COLOR_PAIR(1));
+	//getmaxyx(stdscr, row, col);		/* find the boundaries of the screeen */
+	//local_win = newwin(row, col, 0, 0);
 	//noecho();
+	#endif
 #endif
 
 	while (!inpExitRequest) {
-        //printf(".");
+        //xmprintf(".");
 		//if (kbhit() == 0) {
 			//std::this_thread::sleep_for(100ms);
 			//continue;
 		//}
-		//printf("*\r\n");
+		//xmprintf("*\r\n");
 		//ch = getche();
 #ifdef WIN32
 		if (_kbhit()) {
@@ -147,18 +159,28 @@ void inputProc(void(cb)(char*)) {
 			continue;
 		}
 #else
+	#ifdef USE_NCURSES
 		ch = getch();
 
 		if (ch == ERR) {
 			refresh();
 			continue;
 		}
+	#else
+
+
+	#endif
 #endif
-		//printf(" ch1=%d \r\n", ch);
-		printf("%c", ch);
+		//xmprintf(" ch1=%d \r\n", ch);
+		
 #ifdef WIN32
+		xmprintf("%c", ch);
 #else
+	#ifdef USE_NCURSES
 		refresh();
+	#else
+
+	#endif
 #endif
 
 		if (cmdIndex > cmdSize - 3) {
@@ -168,7 +190,7 @@ void inputProc(void(cb)(char*)) {
 		cmd[cmdIndex] = ch;
 		cmdIndex++;
 
-		//printf("%c", char(ch & 0x00FF));
+		//xmprintf("%c", char(ch & 0x00FF));
 		//ch = toupper(ch);
 		//if ((ch == 'Q') || (inpExitRequest)) {
 		//	//inpExitRequest = true;
@@ -180,8 +202,10 @@ void inputProc(void(cb)(char*)) {
 			ch = _getch();
 
 #else		
+#ifdef USE_NCURSES
 			timeout(-1);
 			ch = getch();
+#endif
 #endif
 			break;
 		}
@@ -191,7 +215,7 @@ void inputProc(void(cb)(char*)) {
                 continue;
             }
 			cmd[cmdIndex-1] = 0;
-            //printf("inp: got {%s} \n", cmd);
+            //xmprintf("inp: got {%s} \n", cmd);
 			
 			//cmd[cmdIndex - 1] = 0;
 			cmdListIndex = 0;
@@ -200,7 +224,7 @@ void inputProc(void(cb)(char*)) {
 				//clrscr();
 				//system("cls");
 			} else {
-				//printf("sending {%s}\r\n", cmd);
+				//xmprintf("sending {%s}\r\n", cmd);
 				cb(cmd);
 				cmdList.put(std::string(cmd));
 				cmdListIndex = cmdList.num - 1;
@@ -215,10 +239,52 @@ void inputProc(void(cb)(char*)) {
 	int abc = 0;
     inpExitRequest = true;
 #ifndef WIN32
-	endwin();
+#ifdef USE_NCURSES
+	endwin();  /* End curses mode		  */
+#endif
 #endif
 	//resetTermios();
-    //printf("exiting inp thread \n");
+    //xmprintf("exiting inp thread \n");
 
+}
+
+std::mutex xmpMutex;
+static const int sbSize = 1024;
+char sbuf[sbSize];
+
+int xmprintf(const char * s, ...) {
+	std::lock_guard<std::mutex> lk(xmpMutex);
+	va_list args;
+	va_start(args, s);
+	int ok;
+
+
+	int bs = 0;
+
+	ok = vsnprintf(sbuf + bs, sbSize - 1 - bs, s, args);
+	if ((ok <= 0) || (ok >= (sbSize - bs))) {
+		//strcpy(sbuf, " errror 2\n");
+		ok = snprintf(sbuf, sbSize - 1, "errror #2, ok = %d \n", ok);
+	}
+
+
+	int eos = strlen(sbuf);
+	sbuf[sbSize - 1] = 0;
+
+
+	//usb_serial_write((void*)(sbuf), eos);
+	#ifdef WIN32
+		printf("%s", sbuf);
+	#else
+		//#ifdef USE_NCURSES
+		//	printw("%s", sbuf);
+		//	refresh();
+		//#else
+			printf("%s", sbuf);
+		//#endif
+	#endif
+
+	va_end(args);
+	return 0;
 }
 

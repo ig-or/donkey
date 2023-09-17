@@ -185,7 +185,7 @@ void ethLoop() {
 			if (infoHandler) {
 				infoHandler(gfFinish, 0); //   stop file transmission if client disconnects
 			}
-			printPings();
+			//printPings();
 			return;
 		}
 	}
