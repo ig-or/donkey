@@ -131,8 +131,8 @@ endif()
 
 if (LOAD_VIA_ROBOT )
 	add_custom_command(TARGET ${PROJECT_NAME}  POST_BUILD 
-		COMMAND scp   "${BUILD_DIR}/${PROJECT_NAME}.hex" robot:/home/nano/prog 
-		COMMAND ssh   nano@robot /home/nano/donkey_load
+		COMMAND scp   "${BUILD_DIR}/${PROJECT_NAME}.hex" robot:/home/don/prog 
+		COMMAND ssh   don@robot /home/don/prog/donkey_load
 		COMMENT   "loading the code into the teensy board"
 		WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 		VERBATIM

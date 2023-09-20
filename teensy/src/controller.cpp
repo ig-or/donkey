@@ -16,6 +16,12 @@
 
 #include <cstring>
 
+enum ControlMode {
+	defaultControlMode,
+	controlModeFromTransmitter
+};
+ControlMode controlMode = defaultControlMode;
+
 struct RcvInfo {
 	int v = 0;
 	unsigned int timeMS = 0;
@@ -79,7 +85,7 @@ void intervalFunction() {
 		//xmprintf(3, "%u intervalFunction \r\n", fCounter);
 	}
 	fCounter += 1;
-	if (fCounter & 1) {
+	if (fCounter & 1) { //  make 50 HZ
 		control100();
 	}
 }
@@ -102,16 +108,18 @@ void controlSetup() {
  * copy info from inside receiver interrups space and 
  * also decide if receiver/transmitter channels are workign or not.
  * 
- * put info into chState and rcvInfoCopy
+ * put info into chState and rcvInfoCopy.
+ * \param[in] now is the current time
 */
 void processReceiverState(unsigned int now) {
 	int i;
-	bool irq = disableInterrupts();
-	memcpy(rcvInfoCopy, rcvInfoRcv, sizeof(RcvInfo) * 2);
+	//  copy receiver's values from its buffers 
+	bool irq = disableInterrupts();    //  FIXME: disable only receiver interrupt here..  check that receiver interrupt is higher priority that this code
+	memcpy(rcvInfoCopy, rcvInfoRcv, sizeof(RcvInfo) * 2); // this is very fast
 	enableInterrupts(irq);
 	RcvChannelState chStateCopy[rcc];
 	for (i = 0; i < rcc; i++) {
-		if ((now <= rcvInfoCopy[i].timeMS) || ((now - rcvInfoCopy[i].timeMS) < 100)) {
+		if ((now <= rcvInfoCopy[i].timeMS) || ((now - rcvInfoCopy[i].timeMS) < 100)) {  // we got the measurements from the receiver right now
 			chStateCopy[i] = chYes;
 		} else {
 			chStateCopy[i] = chNo;
@@ -290,29 +298,55 @@ void controlFromTransmitter(unsigned int now) {
 }
 
 static unsigned int controlCounter = 0;
-volatile char controlIsWorkingNow = false;
+volatile char controlIsWorkingNow = false; //  FIXME: make std::atomic variable here
 static bool printReceiverValues = false;
+
+static int mSpeed = 90.0; // zeroRate;
+void mSetSpeed(int s) {
+	mSpeed = s;
+}
+
+/**
+ *  this is the 50HZ control algorithm.  should it be fixed rate or as fast as we can?
+ * 
+*/
 void control100() {
 	//return;
 	if (controlIsWorkingNow != 0) {
 		return;
 	}
 	controlIsWorkingNow = 1;
+	int bb;
 	unsigned int now = millis();
 
-	processReceiverState(now);
-	if (chState[0] == chYes && chState[1] == chYes) {
-		controlFromTransmitter(now);
-	} else {
-		int bb = std::lround(mpf.pfNext(zeroRate));
-		moveTheVehicle(bb);
+	processReceiverState(now);	// copy info from inside receiver's buffers
+
+	ControlMode cMode = defaultControlMode;
+	if (chState[0] == chYes && chState[1] == chYes) {		//  transmittre is ON
+		cMode = controlModeFromTransmitter;
 	}
-	
+	if (controlMode != cMode) {  							//   control mode changed
+		if (cMode == defaultControlMode) {					//  transmitter was OFF
+			mSpeed = zeroRate;
+		}
+	}
+	controlMode = cMode;
+
+	switch (controlMode) {
+		case defaultControlMode: 
+			bb = std::lround(mpf.pfNext(mSpeed));
+			moveTheVehicle(bb);
+			break;
+		case controlModeFromTransmitter:
+			controlFromTransmitter(now);
+		break;
+	};
+
 	controlIsWorkingNow = 0;
 	controlCounter += 1;
 	if (controlCounter  % 50 == 0) {
 		if (printReceiverValues ) {
-			xmprintf(3, "rcv: [%d, %d]  \r\n", rcvInfoCopy[0].v, rcvInfoCopy[1].v);
+			xmprintf(3, "rcv: [%d, %d]  \r\n", rcvInfoCopy[0].v, rcvInfoCopy[1].v); //  printing receiver codes
 		}
 	}
 	//xmprintf(17, "#");

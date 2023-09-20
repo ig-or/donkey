@@ -36,7 +36,7 @@ static PolyFilter<3> mpf_08_50;	// low pass filter for motor output
 static PolyFilter<3> mpf_027_50;
 
 static const int db = 1;
-static int prevMotorValue = 90;
+static int prevMotorValue = 0;
 
 
 void msetup() {
@@ -86,10 +86,15 @@ void steering(int angle) {
  * \param a the speed, from 0 to 180.  90 is stop.
 */
 void moveTheVehicle(int a) {
+	if (a > 180) {
+		a = 180;
+	} else if (a < 0) {
+		a = 0;
+	}
 	if (abs(a - prevMotorValue) > db) {
 		prevMotorValue = a;
 		motor.write(a);
-		xmprintf(1, " a=%d \r\n", a);
+		xmprintf(3, " a=%d \r\n", a);
 	}
 }
 

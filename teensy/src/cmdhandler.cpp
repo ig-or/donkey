@@ -100,6 +100,15 @@ int processTheCommand(const char* s, int size) {
 		}
 	} else if (strcmp(s, "mstop") == 0) {			//   disable motor control
 		enableMotor(0);
+	} else if (strncmp(s, "mspeed", 6) == 0) {
+		int m;
+		int k = sscanf(s + 6, "%d", &m);
+		if (k == 1) {
+			mSetSpeed(m);
+			xmprintf(3, "mSetSpeed %d enabled \r\n", m);
+		} else {
+			xmprintf(3, "mSetSpeed : k = %d \r\n", k);
+		}
 	} else if (strcmp(s, "cprint") == 0) {			//   print control alg statistics
 		controlPrint();
 	} else if (strcmp(s, "cprintrcv0") == 0) {		// disable printing the rcv statiscics
