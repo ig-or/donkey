@@ -32,18 +32,11 @@ RcvInfo rcvInfoCopy[rcc];
 
 enum RcvChannelState {
 	chUnknown,
+	chCalibration,
 	chYes,  //  working
 	chNo	// not working
 };
 RcvChannelState chState[rcc] = {chUnknown, chUnknown};
-
-enum MotorControlState {
-	mcUnknown,
-	mcStop,
-	mcForward,
-	mcBackward
-};
-MotorControlState mcState = mcUnknown;
 
 static IntervalTimer intervalTimer;
 
@@ -60,20 +53,23 @@ enum MotorMode {
 PolyFilter<3> mpf;
 static MotorMode mMode = mmStop;
 
-// transmitter steering callback
-void rcv_ch1(int v) {
+/** transmitter steering callback.
+ * this is called directly from receiver pin interrupt
+ */
+void rcv_ch1(int v, unsigned int time) {
 	rcvInfoRcv[0].v = v;
-	rcvInfoRcv[0].timeMS = millis();
+	rcvInfoRcv[0].timeMS = time;
 	//steering(val);
 	//xmprintf(3, "CH1\t v = %d; val = %d  \r\n", v, val);
 }
 
 /** transmitter gas callback
+ * this is called directly from receiver pin interrupt.
  *  \param v from 0 to 180
  */
-void rcv_ch2(int v) {
+void rcv_ch2(int v, unsigned int time) {
 	rcvInfoRcv[1].v = v;
-	rcvInfoRcv[1].timeMS = millis();
+	rcvInfoRcv[1].timeMS = time;
 	//moveTheVehicle(val);
 	//xmprintf(3, "CH2\t v = %d; val = %d  \r\n", v, val);
 }
@@ -90,10 +86,27 @@ void intervalFunction() {
 	}
 }
 
+void onMotorStateChaged(MotorControlState mc) {
+	//switch the ultrasonic
+	switch (mc) {
+	case  mcForward: 
+		usStartPing(0); 
+		xmprintf(3, "start moving forward (forward us ping enabled)\r\n");
+		break;
+	case mcBackward: 
+		usStartPing(1); 
+		xmprintf(3, "start moving backward (backward us ping enabled) \r\n");
+		break;
+	default: 
+		usStartPing(0);  
+		xmprintf(3, "stop  (forward us ping enabled) \r\n");
+		break;
+	};
+}
+
 
 void controlSetup() {
 	xmprintf(1, "control setup ... .. ");
-	mcState = mcUnknown;
 	enableMotor(mmRunning_08);
 	//mpf.pfInit(ca3_08_50, cb3_08_50);
 	setReceiverUpdateCallback(rcv_ch1, 1);
@@ -101,6 +114,8 @@ void controlSetup() {
 
 	intervalTimer.priority(255);
 	intervalTimer.begin(intervalFunction, 10000);
+
+	setupMotorStateChangedCallback(onMotorStateChaged);
 	xmprintf(17, "... .. OK \r\n");
 }
 
@@ -115,7 +130,7 @@ void processReceiverState(unsigned int now) {
 	int i;
 	//  copy receiver's values from its buffers 
 	bool irq = disableInterrupts();    //  FIXME: disable only receiver interrupt here..  check that receiver interrupt is higher priority that this code
-	memcpy(rcvInfoCopy, rcvInfoRcv, sizeof(RcvInfo) * 2); // this is very fast
+	memcpy(rcvInfoCopy, rcvInfoRcv, sizeof(RcvInfo) * rcc); // this is very fast
 	enableInterrupts(irq);
 	RcvChannelState chStateCopy[rcc];
 	for (i = 0; i < rcc; i++) {
@@ -132,10 +147,6 @@ void processReceiverState(unsigned int now) {
 }
 
 
-const int zeroRate = 90;
-const int stopRate = 19;
-const int motorRange = zeroRate - stopRate;
-
 void enableMotor(int u) {
 	bool irq = disableInterrupts();
 	mMode = static_cast<MotorMode>(u);
@@ -150,95 +161,73 @@ void enableMotor(int u) {
 	enableInterrupts(irq);
 }
 
-
-/**
- * \param a the speed, from 0 to 180.  90 is stop.
-*/
-MotorControlState getCurrentMcState(int a) {
-	MotorControlState state;
-
-	if (a < zeroRate - stopRate) {
-		state =  mcForward;
-	} else if (a > zeroRate + stopRate) {
-		state = mcBackward;
-	} else {
-		state = mcStop;
-	}
-	return state;
-}
-
 bool veloLimit = false;
 static unsigned char wdCounter = 0;
 /**
  * 
- * \param a the speed, from 0 to 180.  90 is stop.
- *  a=0 -> full forward; a = 180 => full backward;
+ * \param a the speed, from 0 to 180.  90 is stop.  
+ *  a=0 -> full forward; a = 180 => full backward;  
 */
 int wallDetector(int a, unsigned int timestamp) {
-	
-	MotorControlState state = getCurrentMcState(a);
-	//switch the ultrasonic
-	if (state != mcState) {
-		switch (state) {
-		case  mcForward: 
-			usStartPing(0); 
-			xmprintf(3, "start moving forward \r\n");
-			break;
-		case mcBackward: 
-			usStartPing(1); 
-			xmprintf(3, "start moving backward \r\n");
-			break;
-		default: 
-			usStartPing(0);  
-			xmprintf(3, "stop \r\n");
-			break;
-		};
-		mcState = state;
+	// apply the speed limit
+	MotorControlState realMotorState = getCurrentMotorState();
+	//  detect desired motor state
+	MotorControlState mcState = mcUnknown;  	//  mcState is different from realMotorState
+	if (a < motorZeroRate - motorStopDB) {
+		mcState = mcForward;
+	} else if (a < motorZeroRate + motorStopDB) {
+		mcState = mcStop;
+	} else {
+		mcState = mcForward;
 	}
 
-	// apply the speed limit
 	SR04Info us1;
 	SR04Info us2;
 	SR04Info& us = us2;
 	int minmax = 0, aa = 90;
 	const float maxDist = 1400.0; // [mm]
 	const float minDist = 120; // mm
+	const float distRange =  maxDist - minDist;
 	switch (mcState) {
 	case mcForward:
-		getSR04Info(0, us1);
-		getSR04Info2(0, us2);
-		if (us.quality == 1) {  // have some measurement
-			if (us.distance_mm < minDist) { 
-				aa = zeroRate;
+		getSR04Info(0, us1);				// get the data from forward  us sensor
+		getSR04Info2(0, us2);				// get the filtered data
+		if (us.quality == 1) {  			// we do have some measurement
+			if (us.distance_mm < minDist) { //  too close, we should stop
+				aa = motorZeroRate;
 			} else 	if (us.distance_mm < maxDist) { 
-				minmax = zeroRate - stopRate - (motorRange * us.distance_mm) / maxDist;
+				minmax = motorZeroRate - motorStopDB - (motorRange * (us.distance_mm - minDist)) / distRange;
+				if (minmax > motorZeroRate) {
+					minmax = motorZeroRate;
+				}
 				aa = (a < minmax) ? minmax : a;
-			} else {
+			} else {						// too far away, do not limit the control value
 				aa = a;
 			}
-		} else {
+		} else {							//  no good measurements, do nothing here
 			aa = a;
 		}
 		break;
+
 	case mcBackward:
-		getSR04Info(1, us1);
+		getSR04Info(1, us1);						//  take some data from backward us sensor
 		getSR04Info2(1, us2);
 		//us.quality = 0;
-		if (us.quality == 1) {
-			if (us.distance_mm < minDist) { 
-				aa = zeroRate;
+		if (us.quality == 1) {						//  have some measurement
+			if (us.distance_mm < minDist) { 		//  too close
+				aa = motorZeroRate;
 			} else 	if (us.distance_mm < maxDist) { // have some measurement
-				minmax = zeroRate + stopRate + (motorRange * us.distance_mm) / maxDist;
+				minmax = motorZeroRate + motorStopDB + (motorRange * (us.distance_mm - minDist)) / distRange;
 				aa = (a > minmax) ? minmax : a;
 				//xmprintf(17, "~");
-			} else {
+			} else {								// too far away
 				aa = a;
 			}
-		} else {
+		} else {									//  no relevant info from the sensor
 			aa = a;
 		}
 		break;
-	default: aa = zeroRate;
+	default: aa = motorZeroRate;
 	};
 	//xmprintf(17, "#");
 	if (wdCounter % 50 == 0) {
@@ -249,7 +238,7 @@ int wallDetector(int a, unsigned int timestamp) {
 	//   lets run the low pass filter
 	long bb;
 	if (mMode == mmStop) {
-		bb = std::lround(mpf.pfNext(zeroRate));
+		bb = std::lround(mpf.pfNext(motorZeroRate));
 	} else {
 		bb = std::lround(mpf.pfNext(aa));
 	}
@@ -259,7 +248,8 @@ int wallDetector(int a, unsigned int timestamp) {
 		info.aa = aa;
 		info.bb = bb;
 		info.timestamp = timestamp;
-		info.mcState = static_cast<char>(mcState);
+		info.mcRealState = static_cast<char>(realMotorState);
+		info.mcDesiredState = static_cast<char>(mcState);
 		info.minmax = minmax;
 
 		info.us_distance_mm1 = us1.distance_mm;
@@ -270,8 +260,6 @@ int wallDetector(int a, unsigned int timestamp) {
 		info.us_quality2 = us2.quality;
 		info.us_timestamp2 = us2.measurementTimeMs;
 
-		info.mcState = mcState;
-
 		lfSendMessage<xqm::Control100Info>(&info);
 
 	wdCounter += 1;
@@ -280,9 +268,9 @@ int wallDetector(int a, unsigned int timestamp) {
 }
 
 void controlFromTransmitter(unsigned int now) {
-	steering(rcvInfoCopy[0].v);
+	steering(rcvInfoCopy[0].v);		// steering is on the first channel
 
-	int a = rcvInfoCopy[1].v;
+	int a = rcvInfoCopy[1].v;		//  throttle is on the second channel
 	if (a < 0) { a = 0; }
 	if (a > 179) { a = 179; }
 	int bb = wallDetector(a, now);
@@ -293,7 +281,7 @@ void controlFromTransmitter(unsigned int now) {
 	//}
 	
 	//moveTheVehicle(rcvInfoCopy[1].v);
-	moveTheVehicle(bb);
+	moveTheVehicle(bb);				//  send bb code (0 ~ 180) to the main motor
 	//xmprintf(17, "&");
 }
 
@@ -319,7 +307,7 @@ void control100() {
 	int bb;
 	unsigned int now = millis();
 
-	processReceiverState(now);	// copy info from inside receiver's buffers
+	processReceiverState(now);								// copy info from inside receiver's buffers
 
 	ControlMode cMode = defaultControlMode;
 	if (chState[0] == chYes && chState[1] == chYes) {		//  transmittre is ON
@@ -327,7 +315,7 @@ void control100() {
 	}
 	if (controlMode != cMode) {  							//   control mode changed
 		if (cMode == defaultControlMode) {					//  transmitter was OFF
-			mSpeed = zeroRate;
+			mSpeed = motorZeroRate;
 		}
 	}
 	controlMode = cMode;

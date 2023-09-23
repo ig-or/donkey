@@ -37,6 +37,82 @@ static PolyFilter<3> mpf_027_50;
 
 static const int db = 1;
 static int prevMotorValue = 0;
+MotorControlState prevMotorState = mcUnknown;
+onMotorStateChangedP onMotorStateChanged = 0;
+
+const char* motorStateText[mcStatesCount] = {"unknown", "STOP", "FORWARD", "BACKWARD"};
+
+MotorControlState getCurrentMotorState() {
+	return prevMotorState;
+}
+
+/**
+ * \param a new code
+*/
+void processMotorState(int a) {
+	MotorControlState s = mcUnknown;
+	const int db2 = 4;
+	switch (prevMotorState) {
+		case mcUnknown:
+		case mcStop:
+			if (a < motorZeroRate - motorStopDB - db2) {
+				s =  mcForward;
+			} else if (a > motorZeroRate + motorStopDB + db2) {
+				s = mcBackward;
+			} else {
+				s = mcStop;
+			}			
+			break;
+		case mcForward: 
+			if (a > motorZeroRate + motorStopDB + db2) {
+				s = mcBackward;
+			} else if (a > motorZeroRate - motorStopDB + db2) {
+				s = mcStop;
+			} else {
+				s =  mcForward;
+			}
+			break;
+		case mcBackward: 
+			if (a < motorZeroRate - motorStopDB - db2) {
+				s = mcForward;
+			} else if (a < motorZeroRate + motorStopDB - db2) {
+				s = mcStop;
+			} else {
+				s =  mcBackward;
+			}
+		break;
+	}
+
+	if (s != prevMotorState) {
+		xmprintf(3, "motor %s -> %s \r\n", motorStateText[prevMotorState], motorStateText[s]);
+		if (onMotorStateChanged != 0) {
+			onMotorStateChanged(s);
+		}
+		prevMotorState = s;
+	}
+}
+
+/**
+ * \param a the speed, from 0 to 180.  90 is stop.
+*/
+/*
+MotorControlState getCurrentMcState(int a) {
+	MotorControlState state;
+
+	if (a < motorZeroRate - motorStopDB) {
+		state =  mcForward;
+	} else if (a > motorZeroRate + motorStopDB) {
+		state = mcBackward;
+	} else {
+		state = mcStop;
+	}
+	return state;
+}
+*/
+
+void setupMotorStateChangedCallback(onMotorStateChangedP f) {
+	onMotorStateChanged = f;
+}
 
 
 void msetup() {
@@ -93,6 +169,7 @@ void moveTheVehicle(int a) {
 	}
 	if (abs(a - prevMotorValue) > db) {
 		prevMotorValue = a;
+		processMotorState(a);
 		motor.write(a);
 		xmprintf(3, " a=%d \r\n", a);
 	}

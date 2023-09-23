@@ -23,15 +23,16 @@ enum ReceiverUpdateFlag {
 /**
  * a receiver callback function.
  * \param v the value from 0 (minMks) to 180 (maxMks)
+ * \param time measurement time in milliseconds
 */
-typedef void (*recvChangeT)(int);
+typedef void (*recvChangeT)(int, unsigned int);
 
 void receiverSetup();
 void receiverPrint();
 
 void startReceiverCalibrate();
 
-void receiverProcess(unsigned int now);
+void receiverProcessCalibration(unsigned int now);
 //unsigned long rcv_ch1();
 //unsigned long rcv_ch2();
 

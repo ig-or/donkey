@@ -16,22 +16,22 @@
 #include  <algorithm>
 
 struct SR04 {
-	int id = 0;				//  id of this device
-	int trigPin;			//   trigger pin
-	int echoPin;			//  echo pin
-	int max_cm_distance;	// max distance in cm
-	int maxEchoTimeMks = 0;	//   maximum echo time in mks
-	//int minEchoTimeMks = 0;	//   minimum echo time in mks
-	SR04Info info; //  measurement result
+	int id = 0;						//  id of this device
+	int trigPin;					//   trigger pin
+	int echoPin;					//  echo pin
+	int max_cm_distance;			// max distance in cm
+	int maxEchoTimeMks = 0;			//   maximum echo time in mks
+	//int minEchoTimeMks = 0;		//   minimum echo time in mks
+	SR04Info info;	 				//  measurement result
 	static const int hInfoCount = 5;
-	XMRoundBuf<SR04Info, hInfoCount> hInfo; // measurement results
+	XMRoundBuf<SR04Info, hInfoCount> hInfo; // measurement results (history info)
 	unsigned int echoStartTimeMks = 0;
 	unsigned int echoStopTimeMks = 0;
 	unsigned int pingCounter = 0;
 	unsigned int echoUpCounter = 0;
 	unsigned int echoDownCounter = 0;
 		
-	/**
+	/**    us sensor setup. sets pin modes for trig and echo pins.
 	 * \param id its ID
 	 * \param tp trig pin number
 	 * \param ep echo pin
@@ -48,8 +48,19 @@ SR04 sr04[nsr];
 //IntervalTimer pingTimer;//  this is for trigger pulse generation (kind of overkill)
 TeensyTimerTool::OneShotTimer trigTimer(TeensyTimerTool::TMR4);
 TeensyTimerTool::PeriodicTimer periodicPingTimer(TeensyTimerTool::TMR4);
+
+/** pingStatus. 
+ * -3  ping started unexpectedly
+ * -2  measurements from ANOTHER ping STOPPED (while we are wating for the measurement for our current ping to start ). ERROR?
+ * -1  Previous ping hasn't finished. 
+ * 0  very beginning or .....
+ * 1 - trig pin activated
+ * 2 -  trig pin deactivated;  waiting for the echo pin goes HIGH
+ * 3 - echo pin is high. Distance measurement started.
+ * 4 - distance measurement complete (nice!)
+*/
 volatile char pingStatus = 0;
-std::atomic<char>   currentID;
+std::atomic<char>   currentID;					///  ID of the 'current' us sensor
 volatile unsigned int pingErrorCounter = 0;
 
 unsigned int errorsCounter[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -95,27 +106,27 @@ void getSR04Info2(char sid, SR04Info& info) {
 	//return;
 	//xmprintf(17, "1");
 	int num;
-	bool irq = disableInterrupts();
+	bool irq = disableInterrupts();  //  FIXME: disable only us echo interrupt here, only on two echo pins.
 		num = sr04[sid].hInfo.num;
-		if (num == 0) {
+		if (num == 0) {								//  no any measurement
 			enableInterrupts(irq);
 			info.quality = 0;
 			info.distance_mm = 4000;
 			info.measurementTimeMs = millis();
 			return;
-		} else {
+		} else {									// have some info
 			for (i = 0; i < num; i++) {
 				b[i] = sr04[sid].hInfo[num - 1 - i]; // put newest info in the beginning of 'b'
 			}
 		}
 	enableInterrupts(irq);
-	for (i = num; i < SR04::hInfoCount; i++) {
+	for (i = num; i < SR04::hInfoCount; i++) {  // we do need this code
 		b[i].quality = 0;    b[i].measurementTimeMs = 0; b[i].distance_mm = 4000;
 	}
 
 	//  find out the indices where we have some real measurement
-	char ones = 0;								// number of the good measurements
-	char oneIndex[SR04::hInfoCount];			// indexes of the good measurements
+	unsigned char ones = 0;								// number of the good measurements
+	unsigned char oneIndex[SR04::hInfoCount];			// indexes of the good measurements
 	for (i = 0; i < SR04::hInfoCount; i++) {	// for all the measurements	
 		if (b[i].quality == 1) {				//  if its good
 			oneIndex[ones] = i;					// remember its index
@@ -140,8 +151,8 @@ void getSR04Info2(char sid, SR04Info& info) {
 			break;
 		case 2: 								// return the average of those two
 			info.quality = 1;
-			info.distance_mm = (b[oneIndex[0]].distance_mm + b[oneIndex[1]].distance_mm) / 2;
-			info.measurementTimeMs = (b[oneIndex[0]].measurementTimeMs + b[oneIndex[1]].measurementTimeMs) / 2;
+			info.distance_mm = (b[oneIndex[0]].distance_mm + b[oneIndex[1]].distance_mm) >> 1;
+			info.measurementTimeMs = (b[oneIndex[0]].measurementTimeMs + b[oneIndex[1]].measurementTimeMs) >> 1;
 			break;
 		case 3: 								//  we can calculate the median
 			j = opt_med3f(oneIndex, f);
@@ -186,6 +197,10 @@ void stopPingImpulse() {
 	}
 }
 
+/**
+ * echo pin changed its state.
+ * \param usIndex us sensor ID
+*/
 FASTRUN void usEcho(char usIndex) {
 	//return;
 	if (usIndex != currentID) { // We got the echo, but now working with different sensor..  lets skip this measurement
@@ -195,14 +210,14 @@ FASTRUN void usEcho(char usIndex) {
 	//xmprintf(1, " %d,%d ", usIndex, currentID);
 
 	SR04& sr = sr04[usIndex];
-	uint8_t echo =  digitalReadFast(sr.echoPin);
+	uint8_t echo =  digitalReadFast(sr.echoPin);		//  read the actual state of the exho pin
 	if (echo == HIGH) {
 		sr.echoUpCounter += 1;
 	} else {
 		sr.echoDownCounter += 1;
 	}
 	switch (pingStatus) {
-	case 2: // expecting HIGH
+	case 2: // expecting HIGH (measurement started)
 		if (echo == HIGH) {
 			sr.echoStartTimeMks = micros();		//  when measurements started
 			//sr.measurementTimeMs = millis();	//  the timestamp
@@ -212,7 +227,7 @@ FASTRUN void usEcho(char usIndex) {
 			errorsCounter[3] += 1;
 		}
 		break;
-	case 3:  
+	case 3:  //	expectiong LOW (measurement completed)
 		if (echo == LOW) {
 			sr.echoStopTimeMks = micros();
 			pingStatus = 4; // measurement complete
@@ -269,12 +284,10 @@ FASTRUN void us1Echo() {
 }
 
 void SR04::srSerup(int id_, int tp, int ep, int md) {
-	
 	id = id_;
 	//return;
 	trigPin = tp;
 	//return;
-
 	echoPin = ep;
 	max_cm_distance = md;
 	maxEchoTimeMks = (max_cm_distance + 1) * US_ROUNDTRIP_CM;
@@ -290,7 +303,7 @@ void usPing() {
 	//return;
 	bool irq = disableInterrupts();
 		switch (pingStatus) {
-			case 0: break;		// start another mode..
+			case 0: break;		// start another mode, or very beginning
 			case 4: break;  	//  good
 			case 2:     		// ping didnt started.. 
 				errorsCounter[5] += 1; 
@@ -362,8 +375,7 @@ void usSetup() {
 	xmprintf(17, ". srSerup() .. ");
 	//return;
 
-
-	trigTimer.begin(stopPingImpulse);
+	trigTimer.begin(stopPingImpulse);		//  do init, but not ping right now
 	//return;
 	periodicPingTimer.begin(periodicPing, 50ms);
 	xmprintf(17, ".. ... OK \r\n");
