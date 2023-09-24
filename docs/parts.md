@@ -108,6 +108,8 @@ https://github.com/sparkfun/HC-SR04_UltrasonicSensor
 https://shop.pimoroni.com/products/paa5100je-optical-tracking-spi-breakout
 https://www.robotshop.com//products/paa5100je-near-optical-flow-spi-breakout
 
+#### Addressable RGB 30-LED Strip, 5V, 1m (SK9822)
+https://www.pololu.com/product/3086
 
 
 

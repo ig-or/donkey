@@ -73,3 +73,7 @@ const int imuPwrPin = 34;
 const int   memsicDataRate_		=	200;			
 #define   memsicSPI   SPI1
 
+const int ledstrip_data_pin = 26;   //   spi1
+const int ledstrip_clock_pin = 27;
+
+

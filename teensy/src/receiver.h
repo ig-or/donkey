@@ -2,6 +2,22 @@
 #pragma once
 
 /**
+ * state of the calibration status for receiver channel.
+*/
+enum CalibrationState {
+	rcNo,					//  not calibrated
+	rcCalibrationStarting,
+	rcGettingMiddle,
+	rcMovingDown,
+	rcMovingDown2,
+	rcGettingDown, 
+	rcMovingUp,
+	rcMovingUp2,
+	rcGettingUp,
+	rcComplete				//  calibrated
+};
+
+/**
  *  some useful iinfo about receiver states.
 */
 

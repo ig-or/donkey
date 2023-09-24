@@ -32,19 +32,6 @@ enum ChCalibrationMethod {
 };
 ChCalibrationMethod chCalibrationMethod = rcCalibrationOnlyZero;
 
-enum CalibrationState {
-	rcNo,					//  not calibrated
-	rcCalibrationStarting,
-	rcGettingMiddle,
-	rcMovingDown,
-	rcMovingDown2,
-	rcGettingDown, 
-	rcMovingUp,
-	rcMovingUp2,
-	rcGettingUp,
-	rcComplete				//  calibrated
-};
-
 struct RCCalibrationInfo {
 	int center = 0;
 	int minimum = 0;

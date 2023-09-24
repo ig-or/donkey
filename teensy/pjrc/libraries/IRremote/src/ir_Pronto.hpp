@@ -195,7 +195,7 @@ void IRsend::sendPronto_P(const char *str, uint_fast8_t aNumberOfRepeats) {
 void IRsend::sendPronto(const __FlashStringHelper *str, uint_fast8_t aNumberOfRepeats) {
     size_t len = strlen_P(reinterpret_cast<const char*>(str));
     char work[len + 1];
-    strncpy_P(work, reinterpret_cast<const char*>(str), len);
+    strncpy_P(work, reinterpret_cast<const char*>(str), len + 1);
     return sendPronto(work, aNumberOfRepeats);
 }
 

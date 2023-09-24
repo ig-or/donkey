@@ -406,13 +406,13 @@ typedef uint8_t SdCsPin_t;
 #define BUILTIN_SDCARD 254
 #endif  // BUILTIN_SDCARD
 // SPI for built-in card.
-#ifndef SDCARD_SPI
-#define SDCARD_SPI      SPI1
-#define SDCARD_MISO_PIN 59
-#define SDCARD_MOSI_PIN 61
-#define SDCARD_SCK_PIN  60
-#define SDCARD_SS_PIN   62
-#endif  // SDCARD_SPI
+#ifndef SDFAT_SDCARD_SPI
+#define SDFAT_SDCARD_SPI      SPI1
+#define SDFAT_SDCARD_MISO_PIN 59
+#define SDFAT_SDCARD_MOSI_PIN 61
+#define SDFAT_SDCARD_SCK_PIN  60
+#define SDFAT_SDCARD_SS_PIN   62
+#endif  // SDFAT_SDCARD_SPI
 #define HAS_SDIO_CLASS 1
 #endif  // defined(__MK64FX512__) || defined(__MK66FX1M0__)
 #if defined(__IMXRT1062__)

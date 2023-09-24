@@ -19,7 +19,7 @@
 #include "logfile.h"
 #include "eth.h"
 #include "power.h"
-
+#include "led_strip.h"
 
 //#include "xmfilter.h"
 //#include "imu_alg.h"
@@ -146,6 +146,7 @@ extern "C" int main(void) {
 
 		ethLoop();		//  ethernet
 		lfProcess();  	//  log file
+		ledstripTest(msNow);
 
 		//yield();
 		//continue;

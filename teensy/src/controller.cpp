@@ -25,6 +25,7 @@ ControlMode controlMode = defaultControlMode;
 struct RcvInfo {
 	int v = 0;
 	unsigned int timeMS = 0;
+	
 };
 
 RcvInfo rcvInfoRcv[rcc];
@@ -135,6 +136,7 @@ void processReceiverState(unsigned int now) {
 	RcvChannelState chStateCopy[rcc];
 	for (i = 0; i < rcc; i++) {
 		if ((now <= rcvInfoCopy[i].timeMS) || ((now - rcvInfoCopy[i].timeMS) < 100)) {  // we got the measurements from the receiver right now
+
 			chStateCopy[i] = chYes;
 		} else {
 			chStateCopy[i] = chNo;

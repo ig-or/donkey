@@ -14,6 +14,7 @@
 #include "sr04.h"
 #include "controller.h"
 //#include "imu_alg.h"
+#include "led_strip.h"
 
 int ttSetup() {
 	pinMode(imuPwrPin, OUTPUT);
@@ -35,6 +36,9 @@ int ttSetup() {
 
 	
 	analogWrite(led1_pin, maxPWM);
+	ledstripSetup();
+
+
 	//setupMemsic();
 	//imuAlgInit();
 	receiverSetup();
@@ -43,6 +47,8 @@ int ttSetup() {
 	usSetup();
 	controlSetup();
 	analogWrite(led1_pin, 0);
+
+
 	
 	return 0;
 }

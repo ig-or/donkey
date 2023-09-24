@@ -33,8 +33,8 @@ set(LDSCRIPT  "\"${COREPATH}/${MCU_LD}\"")
 set (LDFLAGS "-Os -Wl,--gc-sections,--relax -T${LDSCRIPT} ${LIBS} ") # -fPIC
 #set (LDFLAGS "${LDFLAGS} \"-L${gcc_path}/lib/gcc/arm-none-eabi/10.3.1/thumb/v7e-m+fp/hard\"")
 #set (LDFLAGS "${LDFLAGS} \"-L${gcc_path}/arm-none-eabi/lib/thumb/v7e-m+fp/hard\"")
-set (LDFLAGS "${LDFLAGS} \"-L${atools}/../../teensy-compile/5.4.1/arm/arm-none-eabi/lib\"") 
-set (LDFLAGS "${LDFLAGS} \"-L${atools}/../../teensy-compile/5.4.1/arm/arm-none-eabi/lib/armv7e-m/fpu/fpv5-d16\"")
+set (LDFLAGS "${LDFLAGS} \"-L${atools}/../../teensy-compile/11.3.1/arm/arm-none-eabi/lib\"") 
+#set (LDFLAGS "${LDFLAGS} \"-L${atools}/../../teensy-compile/11.3.1/arm/arm-none-eabi/lib/armv7e-m/fpu/fpv5-d16\"")
 
 #set(LDFLAGS "${LDFLAGS}   -mcpu=cortex-m7 -mfloat-abi=hard -mfpu=fpv5-d16 -T${LDSCRIPT} " ) # -u _scanf_float  -u _printf_float")
 #if (tbProto)

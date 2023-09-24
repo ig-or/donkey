@@ -43,10 +43,8 @@ char mapChar(uint32_t parm)
 // and to map that to an eight character cryptographically secure password
 char *getPassword(char *pw)
 {
-  char ch;
   int indx;
   uint32_t tmp;
-  
   
   for (indx=0; indx<8; indx++)
   { 
