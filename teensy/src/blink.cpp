@@ -146,7 +146,7 @@ extern "C" int main(void) {
 
 		ethLoop();		//  ethernet
 		lfProcess();  	//  log file
-		ledstripTest(msNow);
+		ledstripProcess(msNow);
 
 		//yield();
 		//continue;

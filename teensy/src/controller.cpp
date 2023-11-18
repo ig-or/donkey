@@ -8,7 +8,7 @@
 #include "xmessage.h"
 #include "logfile.h"
 #include "xmfilter.h"
-
+#include "led_strip.h"
 
 #include "wiring.h"
 #include "IntervalTimer.h"
@@ -89,22 +89,31 @@ void intervalFunction() {
 
 void onMotorStateChaged(MotorControlState mc) {
 	//switch the ultrasonic
+	unsigned char ls0 = 0; 
+	unsigned char lsFwd = 0; 
+	unsigned char lsBwd = 0; 
 	switch (mc) {
 	case  mcForward: 
 		usStartPing(0); 
+		lsFwd = 250;
 		xmprintf(3, "start moving forward (forward us ping enabled)\r\n");
 		break;
 	case mcBackward: 
 		usStartPing(1); 
+		lsBwd = 250;
 		xmprintf(3, "start moving backward (backward us ping enabled) \r\n");
 		break;
 	default: 
 		usStartPing(0);  
-		xmprintf(3, "stop  (forward us ping enabled) \r\n");
+		ls0 = 250;
+		xmprintf(3, "stop.  (forward us ping enabled) \r\n");
 		break;
 	};
-}
 
+	ledstripMode(lsStop, ls0);
+	ledstripMode(lsMovingBackward, lsBwd);
+	ledstripMode(lsMovingForward, lsFwd);
+}
 
 void controlSetup() {
 	xmprintf(1, "control setup ... .. ");
@@ -190,6 +199,8 @@ int wallDetector(int a, unsigned int timestamp) {
 	const float maxDist = 1400.0; // [mm]
 	const float minDist = 120; // mm
 	const float distRange =  maxDist - minDist;
+	int fObs = 0;	//  for led strip
+	int rObs = 0;	//  for led strip
 	switch (mcState) {
 	case mcForward:
 		getSR04Info(0, us1);				// get the data from forward  us sensor
@@ -203,6 +214,8 @@ int wallDetector(int a, unsigned int timestamp) {
 					minmax = motorZeroRate;
 				}
 				aa = (a < minmax) ? minmax : a;
+				fObs = 205 - (205 * (us.distance_mm - minDist)) / distRange;
+				clamp(fObs, 0, 255);
 			} else {						// too far away, do not limit the control value
 				aa = a;
 			}
@@ -222,6 +235,8 @@ int wallDetector(int a, unsigned int timestamp) {
 				minmax = motorZeroRate + motorStopDB + (motorRange * (us.distance_mm - minDist)) / distRange;
 				aa = (a > minmax) ? minmax : a;
 				//xmprintf(17, "~");
+				rObs = 205 - (205 * (us.distance_mm - minDist)) / distRange;
+				clamp(rObs, 0, 255);
 			} else {								// too far away
 				aa = a;
 			}
@@ -233,9 +248,11 @@ int wallDetector(int a, unsigned int timestamp) {
 	};
 	//xmprintf(17, "#");
 	if (wdCounter % 50 == 0) {
-		//xmprintf(3, "wallDetector mcState=%d;  a = %d;  aa = %d;  us.quality = %d;  us.distance_mm = %d; minA = %d; maxA = %d \r\n", 
-		//mcState, a, aa, us.quality, us.distance_mm, minA, maxA);
+		xmprintf(3, "wallDetector mcState=%d;  a = %d;  aa = %d;  us.quality = %d;  us.distance_mm = %d; minmax = %d; rObs=%d fObs=%d\r\n", 
+		mcState, a, aa, us.quality, us.distance_mm, minmax, rObs, fObs);
 	}
+	ledstripMode(lsFrontObstacle, fObs);
+	ledstripMode(lsRearObstakle, rObs);
 
 	//   lets run the low pass filter
 	long bb;

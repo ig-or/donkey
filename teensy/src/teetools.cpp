@@ -201,6 +201,19 @@ void enableInterrupts(bool doit) {
 	if (doit) __enable_irq();
 }
 
-
+/*
+int clamp(int v, int min, int max) {
+	if (v > max) return max;
+	if (v < min) return min;
+	return v;
+}
+*/
+void clamp(int& v, int vmin, int vmax) {
+	if (v > vmax) {
+		v = vmax; 
+	} else if (v < vmin) {
+		v =  vmin;
+	}
+}
 
 

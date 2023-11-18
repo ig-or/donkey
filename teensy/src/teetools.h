@@ -46,5 +46,8 @@ int xmprintf(int dst, const char* s, ...);
 /// @param x 
 void printfToEth(bool x);
 
+//int clamp(int v, int min, int max);
+void clamp(int& v, int vmin, int vmax);
+
 
 

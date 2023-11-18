@@ -6,6 +6,7 @@
 #include "sr04.h"
 #include "teetools.h"
 #include "xmfilter.h"
+#include "led_strip.h"
 
 #include "wiring.h"
 #include <cmath>
@@ -171,7 +172,7 @@ void moveTheVehicle(int a) {
 		prevMotorValue = a;
 		processMotorState(a);
 		motor.write(a);
-		xmprintf(3, " a=%d \r\n", a);
+		//xmprintf(3, " a=%d \r\n", a);
 	}
 }
 
