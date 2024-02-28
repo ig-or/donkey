@@ -1,0 +1,8 @@
+#!/bin/bash
+echo "flashing the teensy ...."
+DIR="$(cd "$(dirname "$0")" && pwd)"
+$DIR/teensy_loader_cli --mcu=TEENSY41 -w -s -v  $DIR/donkey.hex
+echo "completed"
+
+
+
