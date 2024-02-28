@@ -1,6 +1,6 @@
 
 
-#include "PAA5100.h"
+#include "paa5100.h"
 
 #define DEBUGPAA5100 1
 

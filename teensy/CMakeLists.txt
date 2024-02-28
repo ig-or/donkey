@@ -2,6 +2,7 @@
 cmake_minimum_required (VERSION 3.16)
 
 #cmake_policy(SET CMP0057 NEW)
+#message("CMAKE_C_COMPILER = ${CMAKE_C_COMPILER}")
 set(PROJECT_NAME donkey)
 PROJECT(${PROJECT_NAME})
 
@@ -33,7 +34,7 @@ add_definitions(-DOURPROJECTNAME=${PROJECT_NAME})
 #add_definitions(-DNOMINMAX)
 add_definitions(-DUSE_SINGLE__PRECISION_NUMBERS -DXMPRINTF_TO_FILE)
 
-add_definitions(-DLWIP_PROVIDE_ERRNO=1 -DLWIP_IPV4=1) # for QNEthernet
+add_definitions(-DLWIP_PROVIDE_ERRNO=1 -DLWIP_IPV4=1) # for QNEthernet library
 #add_compile_options( -std=c++14 )
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 ")
 
@@ -131,19 +132,19 @@ endif()
 
 if (LOAD_VIA_ROBOT )
 	add_custom_command(TARGET ${PROJECT_NAME}  POST_BUILD 
-		COMMAND scp   "${BUILD_DIR}/${PROJECT_NAME}.hex" robot:/home/don/prog 
-		COMMAND ssh   don@robot /home/don/prog/donkey_load
+		COMMAND scp   "${BUILD_DIR}/${PROJECT_NAME}.hex" robot:/home/test/prog/donkey 
+		COMMAND ssh   test@robot /home/test/prog/donkey/donkey_load
 		COMMENT   "loading the code into the teensy board"
 		WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 		VERBATIM
 		USES_TERMINAL
 	)
 else()
-	add_custom_target(
-		run ${atools}/teensy_reboot
-		COMMENT   "loading the code into the teensy board" VERBATIM USES_TERMINAL
-		WORKING_DIRECTORY "${atools}"
-	)
+	#add_custom_target(
+	#	run ${atools}/teensy_reboot
+	#	COMMENT   "loading the code into the teensy board" VERBATIM USES_TERMINAL
+	#	WORKING_DIRECTORY "${atools}"
+	#)
 endif()
 
 

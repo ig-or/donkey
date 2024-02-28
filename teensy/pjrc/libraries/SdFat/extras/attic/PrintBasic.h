@@ -31,7 +31,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
-#include "Wstring.h"
+#include "WString.h"
 
 #ifdef F
 #warning F() macro defined for non Arduino System

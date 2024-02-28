@@ -15,23 +15,21 @@ set(CMAKE_SYSTEM_NAME Generic)
 #set (CMAKE_SYSTEM_VERSION )
 set(CMAKE_SYSTEM_PROCESSOR arm)
 include("${CMAKE_CURRENT_LIST_DIR}/options.cmake")
-
-set(gcc_path "$ENV{GCC_ARM}")
-cmake_path(NORMAL_PATH gcc_path)  # need this for Windows
-
 message(STATUS "atools =  ${atools}; gcc path = ${gcc_path}")
 #SET(ASM_OPTIONS "-x assembler-with-cpp")
-
-SET(CMAKE_FIND_ROOT_PATH  ${TOOLSPATH}/arm)
+#SET(CMAKE_FIND_ROOT_PATH  ${TOOLSPATH}/arm)
 set(CMAKE_TRY_COMPILE_TARGET_TYPE   STATIC_LIBRARY)
 
-if (${gcc_path})
+#if (${gcc_path})
+if (NOT "${gcc_path}" STREQUAL "")
 	set(COMPILERPATH  "${gcc_path}/bin/")
+	message(STATUS COMPILERPATH = ${COMPILERPATH})
 else()
 	set(COMPILERPATH)
+	message(STATUS "no COMPILERPATH.. all the build tools supposed to be in PATH then ? gcc_path = ${gcc_path}")
 endif()
 
-set(esfx)
+set(esfx)  # need a file extension for Windows
 if (WIN32)
 set(esfx .exe)
 endif()
@@ -52,19 +50,11 @@ set(CMAKE_OBJDUMP "${COMPILERPATH}arm-none-eabi-objdump${esfx}"  CACHE INTERNAL 
 set(CMAKE_SIZE  "${COMPILERPATH}arm-none-eabi-size${esfx}"  CACHE INTERNAL "")
 set(CMAKE_RANLIB "${COMPILERPATH}arm-none-eabi-gcc-ranlib${esfx}"  CACHE INTERNAL "")
 
-set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+set(CMAKE_FIND_ROOT_PATHCMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
-
-
-
-# options needed by many Arduino libraries to configure for Teensy model
-#OPTIONS += -D__$(MCU)__ -DARDUINO=10813 -DTEENSYDUINO=154 -D$(MCU_DEF)
 set(CMAKE_VERBOSE_MAKEFILE ON  CACHE INTERNAL "")
-
-#set (BUILDDIR  build)
-#set (BUILD_DIR  build)
 
 # compiler options for C only
 #set (CFLAGS )
@@ -95,4 +85,5 @@ set(CMAKE_MASM_FLAGS  "${asmFlags}"  CACHE INTERNAL "" FORCE)
 set(CMAKE_ATT_FLAGS  "${asmFlags} " CACHE INTERNAL "" FORCE )
 
 set(BUILD_SHARED_LIBS OFF)
+message(STATUS "TOOLCHAIN file; CMAKE_C_COMPILER = ${CMAKE_C_COMPILER}")
 
