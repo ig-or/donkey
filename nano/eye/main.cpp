@@ -49,6 +49,7 @@ int main(int argc, char *argv[]) {
 	pingTime = std::chrono::steady_clock::now();
 	//xmprintf("console starting .. ");
 
+/*  G4 test 
 	startG4();
 	for (int k = 1; k < 100; k++) {
 		std::this_thread::sleep_for(100ms);
@@ -56,7 +57,7 @@ int main(int argc, char *argv[]) {
 	stopG4();
 
 	return 0;
-
+*/
 
 	//cli.startClient(teeData);
 	std::thread tcp([&] { cli.startClient(teeData, ping); } );

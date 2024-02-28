@@ -39,6 +39,7 @@ void event100ms() {  //   call this 10 Hz
 }
 
 static int lastBatteryInfo = 0, nextBatteryInfo = 0;
+static int switchState = -1;
 
 void event250ms() {	  //  call this 4  Hz
 	h_usb_serial();	
@@ -47,7 +48,13 @@ void event250ms() {	  //  call this 4  Hz
 		lastBatteryInfo = nextBatteryInfo;
 		batteryUpdate(lastBatteryInfo);
 	}
-	
+
+	int sw = digitalRead(switchPin);
+	if ((switchState != -1) && (switchState != sw)) {
+		xmprintf(1, "sw = %d \r\n", sw);
+
+	}
+	switchState = sw;
 }
 
 void event1s() {   //  call this 1 Hz

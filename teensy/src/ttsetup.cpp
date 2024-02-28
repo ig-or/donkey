@@ -48,7 +48,8 @@ int ttSetup() {
 	controlSetup();
 	analogWrite(led1_pin, 0);
 
-
+	// switch/button
+	pinMode(switchPin, INPUT);
 	
 	return 0;
 }

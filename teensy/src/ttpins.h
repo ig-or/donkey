@@ -2,6 +2,7 @@
 
 const int ledPin = 13;
 const int bvPin = 25;   ///< main battery voltage from the bridge
+const int switchPin = 33; // a switch/button
 
 /*Motor speed inputs: A PWM (pulse-width modulation) signal 
 on these pins corresponds to a PWM output on the corresponding channel’s motor outputs. 
