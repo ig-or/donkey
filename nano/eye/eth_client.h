@@ -4,6 +4,7 @@
 
 #include "boost/asio.hpp"
 #include <mutex>
+#include <deque>
 #include <condition_variable>
 //#include <chrono>
 
@@ -76,10 +77,11 @@ enum EState {
 	data_1 cb1 = 0;
 	vf ping1 = 0;
 
-	std::mutex mu;
+	std::mutex mu, muOutbox;
 	std::condition_variable cv;
 	boost::asio::steady_timer deadline_;
 	boost::asio::steady_timer heartbeat_timer_;
+	std::deque<std::string> outbox_;				///  messages to write
 	
 };
 

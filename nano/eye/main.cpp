@@ -127,6 +127,9 @@ static char sbuf[sbSize];
 static int currentLogLevel = 7;
 
 int xmprintf(int q, const char * s, ...) {
+	if (q > currentLogLevel) {
+		return 0;
+	}
 	std::lock_guard<std::mutex> lk(xmpMutex);
 	va_list args;
 	va_start(args, s);
