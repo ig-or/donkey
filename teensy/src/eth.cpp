@@ -280,7 +280,7 @@ void ethLoop() {
   	} 
 	*/  
 	unsigned int ms = millis();
-	if (clientConnected && ((ms - aliveTime) > 300) && (!infoHandler)) {
+	if (clientConnected && ((ms - aliveTime) > 245) && (!infoHandler)) {
 		aliveTime = ms;
 		//udp.beginPacket("192.168.0.181", 8888);
 		//udp.write("alive\r\n");

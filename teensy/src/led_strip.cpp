@@ -21,10 +21,9 @@ unsigned int testCounter = 0;
 unsigned int lsProcessCounter = 0;
 unsigned int lsProcessTime = 0;
 
-//CLEDController ledController;
-unsigned char lsModes[lsModesCount];
-unsigned int lsModeLeds[lsModesCount];
-unsigned int lsModeColors[lsModesCount]; 		//  0RGB 0 - 255
+unsigned char lsModes[lsModesCount];			///< 
+unsigned int lsModeLeds[lsModesCount];			///< which lEDs are participating in this modes
+unsigned int lsModeColors[lsModesCount]; 		///<  colors for particular modes      0RGB 0 - 255
 
 const unsigned int frontLeds = 15 << 10;     	//  10, 11, 12, 13, 
 const unsigned int frontAngleLeds = 0x4200;		// 9 , 14
@@ -37,7 +36,7 @@ void setupModeLeds() {
 	lsModeLeds[lsFrontObstacle] =  frontLeds; 
 	lsModeLeds[lsMovingForward] = frontAngleLeds;
 	lsModeLeds[lsRearObstakle] = rearLeds;
-	lsModeLeds[lsMovingBackward] = 0x10000000;
+	lsModeLeds[lsMovingBackward] = 0x10000000;    //  28
 
 	lsModeColors[lsFrontObstacle] =  	0x00ff0000; 
 	lsModeColors[lsMovingForward] = 	0x00d0d0d0;

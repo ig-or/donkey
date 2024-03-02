@@ -1,4 +1,14 @@
-
+/**
+ * @file led_indication.h
+ * 
+ * @author your name (you@domain.com)
+ * @brief  this is about single orange led control (or maybe another LED)
+ * @version 0.1
+ * @date 2024-03-01
+ * 
+ * @copyright Copyright (c) 2024
+ * 
+ */
 #pragma once
 #include "teetools.h"
 
