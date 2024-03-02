@@ -30,13 +30,14 @@ int ttSetup() {
 	//////analogReadAveraging(8);
 	
 	lfInit();  //  SD log file init; will set up sdStarted = true; if SD card present
-	ethSetup();
+	
 
 	//irSetup(); // IR receiver setup
 
 	
 	analogWrite(led1_pin, maxPWM);
 	ledstripSetup();
+	ethSetup();
 
 
 	//setupMemsic();

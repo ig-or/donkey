@@ -20,7 +20,7 @@ void ethSetup();
 /**
  * call this in every loop (not in interrupt)
 */
-void ethLoop();
+void ethLoop(unsigned int now);
 
 /**  printout some statistics*/
 void ethPrint();

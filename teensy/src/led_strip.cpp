@@ -6,6 +6,8 @@
 
 #include <FastLED.h>
 
+#include <cmath>
+
 #define NUM_LEDS 30
 #define PIN_CLOCK_MHZ 1  // Any setting fails.
 #define LED_CHIPSET SK9822
@@ -19,31 +21,34 @@ unsigned int lsShowTime = 0;
 unsigned int testCounter = 0;
 
 unsigned int lsProcessCounter = 0;
+unsigned int lastTestTime = 0;
 unsigned int lsProcessTime = 0;
 
-unsigned char lsModes[lsModesCount];			///< 
-unsigned int lsModeLeds[lsModesCount];			///< which lEDs are participating in this modes
-unsigned int lsModeColors[lsModesCount]; 		///<  colors for particular modes      0RGB 0 - 255
+unsigned char 	lsModes[lsModesCount];				///< current intensity values for all the modes
+unsigned int 	lsModeLeds[lsModesCount];			///< which lEDs are participating in this modes
+unsigned int 	lsModeColors[lsModesCount]; 		///<  colors for particular modes      0RGB 0 - 255
 
 const unsigned int frontLeds = 15 << 10;     	//  10, 11, 12, 13, 
 const unsigned int frontAngleLeds = 0x4200;		// 9 , 14
 const unsigned int rearLeds = 0x20000000;		// 29
 
 const int stopCycle = 2000;
-
+int lsEyeConnectionLed = 0;
 
 void setupModeLeds() {
 	lsModeLeds[lsFrontObstacle] =  frontLeds; 
 	lsModeLeds[lsMovingForward] = frontAngleLeds;
 	lsModeLeds[lsRearObstakle] = rearLeds;
-	lsModeLeds[lsMovingBackward] = 0x10000000;    //  28
+	lsModeLeds[lsMovingBackward] = 0x10000000;    	//  28
+	lsModeLeds[lsEyeConnection] = 0x1;				// 0
+	lsEyeConnectionLed = 0;
 
-	lsModeColors[lsFrontObstacle] =  	0x00ff0000; 
-	lsModeColors[lsMovingForward] = 	0x00d0d0d0;
-	lsModeColors[lsRearObstakle] = 		0x00ff0000;
-	lsModeColors[lsMovingBackward] = 	0x00d0d0d0;
+	lsModeColors[lsFrontObstacle] =  	0x00ff0000; 		//  red
+	lsModeColors[lsMovingForward] = 	0x00d0d0d0;			// white
+	lsModeColors[lsRearObstakle] = 		0x00ff0000;			// red
+	lsModeColors[lsMovingBackward] = 	0x00d0d0d0;			// white
+	lsModeColors[lsEyeConnection] =    0x00050808;
 }
-
 
 void ledstripSetup() {
 	//FastLED.addLeds<LED_CHIPSET, PIN_DATA, PIN_CLOCK, LED_ORDER, DATA_RATE_KHZ(10)>(leds, NUM_LEDS);
@@ -58,9 +63,6 @@ void ledstripSetup() {
 
 	for (int i = 0; i < NUM_LEDS; ++i) {
 		leds[i] = CRGB::Green;
-		
-		//delay(1);
-		//leds[i] = CRGB::Black;
 	}
 	FastLED.show();
 }
@@ -86,9 +88,12 @@ void ledstripTest(unsigned int now) {
 	testCounter += 1;
 }
 
-void ledstripMode(LSFlashMode mode, unsigned char intensity) {
+void ledstripMode(LSFlashMode mode, unsigned char intensity, unsigned int color) {
 	unsigned int m = static_cast<unsigned int>(mode);
 	lsModes[m] = intensity;
+	if (color != 0) {
+		lsModeColors[m] = color;
+	}
 }
 
 unsigned int ltmp[NUM_LEDS];
@@ -102,6 +107,9 @@ void ledstripProcess(unsigned int now) {
 	int i, j, b, k, kb, a;
 	memset(ltmp, 0, NUM_LEDS * sizeof(unsigned int));	// black by default
 	for (j = 0; j < NUM_LEDS; j++) {
+		if (j == lsEyeConnectionLed) {
+			continue;
+		}
 		b = 1 << j;										//   led mask
 		for (i = 0; i < lsModesCount; i++) {
 			if (lsModes[i] == 0) {
@@ -123,6 +131,37 @@ void ledstripProcess(unsigned int now) {
 		//  this led is still empty..
 	}
 
+	const int ecp = 1000;
+	if (lsModes[lsEyeConnection] != 0) { //  connection: special case
+		k = now % (ecp << 1);
+		float u;
+		int i = lsModes[lsEyeConnection];
+		if (k <= ecp) {
+			u = (k * i) / ((float)(ecp));
+		} else {
+			u = (i << 1) - (k * i) / ((float)(ecp));
+		}
+		int a = round(u);
+		if (a < 0) a = 0;
+		if (a > 255) a = 255;
+
+		unsigned int c = lsModeColors[lsEyeConnection];
+		unsigned int b = 0;
+		b += ((c & 0xff) * a) >> 8;   c >>= 8;   // b
+		b += (((c & 0xff) * a) >> 8) << 8;   c >>= 8;	// g
+		b += (((c & 0xff) * a) >> 8) << 16;    	// r
+		if (b == 0) {
+			b = 1;
+		}
+
+		ltmp[lsEyeConnectionLed] = b;
+		//if (now - lastTestTime > 1000) {
+		//	lastTestTime = now;
+		//	xmprintf(1, "ledstripProcess  b = %u; k = %d; i = %u, u = %.3f, a = %d, c = %u, lsModeColors = %u  \r\n", b, k, i, u, a, c,
+		//		lsModeColors[lsEyeConnection]);
+		//}
+	}
+
 	if (lsModes[lsStop] != 0) {			//   stop mode is a spesial case
 		k = now % stopCycle;	//  0 ~ stopCycle
 		i = k * NUM_LEDS / stopCycle;
@@ -138,6 +177,7 @@ void ledstripProcess(unsigned int now) {
 		leds[j] = ltmp[j];
 	}
 	FastLED.show();
+	lsProcessCounter += 1;
 }
 
 

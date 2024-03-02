@@ -23,6 +23,7 @@ enum LSFlashMode {
 	lsFrontObstacle,		/// front obstacle detected
 	lsRearObstakle,
 	lsStop,					///   we are not moving
+	lsEyeConnection,		/// indication of the connection wit hthe eye sw
 	lsModesCount
 };
 /// @brief  setup everything
@@ -37,4 +38,4 @@ void ledstripProcess(unsigned int now);
  * \param mode the mode
  * \param intensity 0 means deactivate.. 255 is the maximum
 */
-void ledstripMode(LSFlashMode mode, unsigned char intensity);
+void ledstripMode(LSFlashMode mode, unsigned char intensity, unsigned int color = 0);

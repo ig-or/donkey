@@ -8,6 +8,7 @@
 #include "xstdef.h"
 #include "cmdhandler.h"
 #include "xmroundbuf.h"
+#include "led_strip.h"
 
 /// @brief  ethernet connection status
 enum EthStatus {
@@ -51,6 +52,8 @@ unsigned char buf2[bufSize2];
 static EthernetServer server;
 static EthernetClient client;
 EthInfoHandler infoHandler = 0;  ///< for log file upload
+
+unsigned int lastIncomingInfoTime = 0;
 
 #pragma pack(1)
 struct PingStruct {
@@ -124,6 +127,8 @@ void ethSetup() {
 	pingStruct.id = 0; pingStruct.time = millis(); pingStruct.reserved[0] = 0;
 
 	client = server.available();
+	ledstripMode(lsEyeConnection, 200, 0x00000008);
+	lastIncomingInfoTime = 0;
 	xmprintf(1, "eth started 2; client=%s \r\n", client ? "yes" : "no");
 }
 
@@ -138,7 +143,12 @@ void ethFeed(char* s, int size) {
 	//xmprintf(2, "ethFeed: + %d bytes \r\n", size);
 }
 
-void ethLoop() {
+void ethLoop(unsigned int now) {
+	if ((now - lastIncomingInfoTime) > 1250) {
+		//xmprintf(1, "ethLoop() disconnected?")
+		ledstripMode(lsEyeConnection, 200, 0x00a000a0);
+	}
+
 	EthernetLinkStatus currentLinkStatus = Ethernet.linkStatus();
 	if (currentLinkStatus != linkStatus) {
 		linkStatus = currentLinkStatus;
@@ -150,6 +160,7 @@ void ethLoop() {
 		if (clientConnected) {
 			clientConnected = false;
 			xmprintf(1, "ETH client disconnected 3;  linkStatus = %d\r\n", linkStatus);
+			ledstripMode(lsEyeConnection, 200, 0x00000095);
 		}
 		return;
 	}
@@ -163,6 +174,7 @@ void ethLoop() {
 		if (clientConnected) {
 			clientConnected = false;
 			xmprintf(1, "ETH client disconnected 2 \r\n");
+			ledstripMode(lsEyeConnection, 200, 0x00000095);
 		}
 		return;
 	}
@@ -203,8 +215,12 @@ void ethLoop() {
 		
 		//xmprintf(2, "ETH: got %d bytes {%s} \r\n", bs1, packetBuffer);
 		if ((bs1 > 0)) {
+			lastIncomingInfoTime = now;
+			ledstripMode(lsEyeConnection, 200, 0x0000a000);
 		 	if (strncmp(packetBuffer, "console", 7) == 0 ) {  //  console client connected
 				client.write("tee ", 4);
+			} else if (strncmp(packetBuffer, "ping", 4) == 0 ) {
+				
 			} else 	if (infoHandler) { 
 				unsigned int pn;
 				if ((bs1 >= 16) && (memcmp(packetBuffer, "TBWF", 4) == 0)) { // teensy, please send next
