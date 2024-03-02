@@ -2,13 +2,13 @@
 
 #include "src/CYdLidar.h"
 
-int xmprintf(const char * s, ...);
+int xmprintf(0, const char * s, ...);
 
 CYdLidar laser;
 bool g4IsWorking = false;
 
 bool startG4()  {
-	xmprintf("starting g4 ..    ... \n");
+	xmprintf(0, "starting g4 ..    ... \n");
 	///lidar port
 	std::string str_optvalue("/dev/ttyUSB0");
 	laser.setlidaropt(LidarPropSerialPort, str_optvalue.c_str(), str_optvalue.size());
@@ -86,13 +86,13 @@ bool startG4()  {
 	if (ret) {
 		ret = laser.turnOn();
 		if (ret) {
-			xmprintf("g4 started\n");
+			xmprintf(0, "g4 started\n");
 		} else {
-			xmprintf("cannot start g4 \n");
+			xmprintf(0, "cannot start g4 \n");
 			return false;
 		}
 	} else {
-		xmprintf("startG4() cannot start the laser; %s\n", laser.DescribeError());
+		xmprintf(0, "startG4() cannot start the laser; %s\n", laser.DescribeError());
 		return false;
 	}
 	g4IsWorking = true;
@@ -101,11 +101,11 @@ bool startG4()  {
 
 bool stopG4() {
 	if (g4IsWorking) {
-		xmprintf("stopping g4 .. \n");
+		xmprintf(0, "stopping g4 .. \n");
 		laser.turnOff();
 		laser.disconnecting();
 		g4IsWorking = false;
-		xmprintf(" .. g4 stopped\n");
+		xmprintf(0, " .. g4 stopped\n");
 	}
 	return true;
 }
