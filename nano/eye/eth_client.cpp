@@ -73,6 +73,7 @@ bool EthClient::startClient(data_1 cb, vf ping) { // , int msTimeout
 		xmprintf(1, "ERROR: cannot connect to tennsy; exeption: %s  \r\n", e.what());
 		return false;
 	}
+	xmprintf(6, "EthClient::startClient() finished (io_context.run() exited)\n");
 	return true;
 }
 

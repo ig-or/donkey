@@ -7,15 +7,20 @@
 #include <thread>
 #include <iostream>
 
+#include <signal.h>
+#include <unistd.h>
+#include <stdarg.h>
+
 #include "eth_client.h"
+#include "lidar.h"
+#include <xmroundbuf.h>
 #ifdef G4LIDAR
 #include "g4.h"
 #endif
 
-#include <stdarg.h>
-#include <xmroundbuf.h>
-
 EthClient cli;
+static SLidar* lidar = 0;
+
 std::chrono::time_point<std::chrono::steady_clock> pingTime;
 int xmprintf(int q, const char * s, ...);
 std::chrono::time_point<std::chrono::steady_clock> eStartTime;
@@ -34,7 +39,6 @@ void teeData(char* s, int size) {
 	xmprintf(0, "%s", s);
 }
 
-
 void ping(unsigned char id, unsigned int time) {
 	pingTime = std::chrono::steady_clock::now();
 	PingInfo pInfo;
@@ -45,26 +49,45 @@ void ping(unsigned char id, unsigned int time) {
 }
 
 
+void exitHandler(int s){
+	xmprintf(0, "exitHandler() Caught signal %d\n",s);
+
+	if (lidar) {
+		bool result = lidar->stopLidar();
+		xmprintf(6, "exitHandler() lidar stopped: %s \n", result ? "yes" : "no");
+		delete lidar; lidar = 0;
+	}
+	cli.StopClient();
+	xmprintf(6, "exitHandler() filished\n");
+	exit(0); 
+}
+
 int main(int argc, char *argv[]) {
 	using namespace std::chrono_literals;
+	bool result;
 	eStartTime = std::chrono::steady_clock::now();
-
 	pingInfo.clear();
 	pingTime = std::chrono::steady_clock::now();
-	//xmprintf(0, "console starting .. ");
+	xmprintf(0, "eye starting .. \n");
 
-/*  G4 test 
-	startG4();
-	for (int k = 1; k < 100; k++) {
-		std::this_thread::sleep_for(100ms);
-	}
-	stopG4();
-
-	return 0;
-*/
-
+	// setup Ctrl^C
+	struct sigaction sigIntHandler;
+	sigIntHandler.sa_handler = exitHandler;
+	sigemptyset(&sigIntHandler.sa_mask);
+	sigIntHandler.sa_flags = 0;
+	sigaction(SIGINT, &sigIntHandler, NULL);
+ 
 	//cli.startClient(teeData);
 	std::thread tcp([&] { cli.startClient(teeData, ping); } );
+
+	SimpleLC lc;
+	
+	#ifdef G4LIDAR
+		lidar = new G4Lidar(lc);
+	#else
+		lidar = new SLidar(lc);  //this will do nothing
+	#endif
+	result = lidar->startLidar();
 
 	std::this_thread::sleep_for(200ms);
 	tcp.join();
@@ -127,6 +150,7 @@ static char sbuf[sbSize];
 static int currentLogLevel = 7;
 
 int xmprintf(int q, const char * s, ...) {
+
 	if (q > currentLogLevel) {
 		return 0;
 	}
