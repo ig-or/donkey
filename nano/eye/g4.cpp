@@ -1,13 +1,15 @@
 #include "g4.h"
 
 #include "src/CYdLidar.h"
+#include <core/base/timer.h>
+#include <core/common/ydlidar_help.h>
 
-int xmprintf(0, const char * s, ...);
+int xmprintf(int q, const char * s, ...);
 
 CYdLidar laser;
-bool g4IsWorking = false;
+LaserScan scan;
 
-bool startG4()  {
+bool G4Lidar::slStart() {
 	xmprintf(0, "starting g4 ..    ... \n");
 	///lidar port
 	std::string str_optvalue("/dev/ttyUSB0");
@@ -95,17 +97,62 @@ bool startG4()  {
 		xmprintf(0, "startG4() cannot start the laser; %s\n", laser.DescribeError());
 		return false;
 	}
-	g4IsWorking = true;
+	lidarIsWorking = true;
 	return true;
 }
 
-bool stopG4() {
-	if (g4IsWorking) {
+bool G4Lidar::slStop() {
+	if (lidarIsWorking) {
 		xmprintf(0, "stopping g4 .. \n");
 		laser.turnOff();
 		laser.disconnecting();
-		g4IsWorking = false;
+		lidarIsWorking = false;
 		xmprintf(0, " .. g4 stopped\n");
 	}
 	return true;
+}
+G4Lidar::~G4Lidar() {
+	if (points != 0) {
+		delete[] points;
+		points = 0;
+		pointsSize = 0;
+	}
+	xmprintf(6, "G4Lidar::~G4Lidar()\n");
+}
+
+bool G4Lidar::getScan(SLPoint*& p, int& n) {
+	if (!ydlidar::os_isOk()) {
+		return false;
+	}
+	bool result = laser.doProcessSimple(scan);
+	if (!result) {
+		return false;
+	}
+	// adjust points array
+	int np = scan.points.size();
+	if (points == 0) {
+		pointsSize = np << 1;
+		points = new SLPoint[pointsSize];
+	} else {
+		if (pointsSize < np) {
+			delete[] points;
+			pointsSize = np << 1;
+			points = new SLPoint[pointsSize];
+		}
+	}
+	pointsCount = np;
+	int i;
+	for (i = 0; i < np; i++) {
+		points[i].angle = scan.points[i].angle;
+		points[i].intensity = scan.points[i].intensity;
+		points[i].range = scan.points[i].range;
+	}
+	n = np;
+	p = points;
+	return true;
+}
+
+void G4Lidar::adjustCalibration(SLCalibration& c) {
+	c.rotation = -42.0 * pii / 180.0;
+	xmprintf(5, "G4 calibration adjusted \n");
 }

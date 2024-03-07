@@ -21,10 +21,11 @@ include_directories(
   ${PROJECT_SOURCE_DIR}/src
 )
 
-addSourceFiles("main" "." main  eth_client)
+addSourceFiles("main" "." main  eth_client lidar eye)
 addSourceFiles("core" "${xqt}/core/src" rbuf xmroundbuf xmutils xstdef xmatrixplatform)
-addSourceFiles("matrix" "${xqt}/matrix/src" xmatrix_imp xmatrix2)
+addSourceFiles("matrix" "${xqt}/matrix/src" xmatrix_imp xmatrix2 xmfilter)
 addSourceFiles("message" "${xqt}/message/src" xmessage xparser xq_parser datafileloader xqdatatxtfile xmessagepack xmessagesend)
+addSourceFiles("interface" "../../src" eth_api)
 
 if (G4_LIDAR)
   add_definitions(-DG4LIDAR)

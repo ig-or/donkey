@@ -7,15 +7,21 @@
 #include <thread>
 #include <iostream>
 
+#include <signal.h>
+#include <unistd.h>
+#include <stdarg.h>
+
 #include "eth_client.h"
+#include "lidar.h"
+#include <xmroundbuf.h>
 #ifdef G4LIDAR
 #include "g4.h"
 #endif
+#include "eye.h"
 
-#include <stdarg.h>
-#include <xmroundbuf.h>
+static EthClient* cli = 0;
+static SLidar* lidar = 0;
 
-EthClient cli;
 std::chrono::time_point<std::chrono::steady_clock> pingTime;
 int xmprintf(int q, const char * s, ...);
 std::chrono::time_point<std::chrono::steady_clock> eStartTime;
@@ -34,7 +40,6 @@ void teeData(char* s, int size) {
 	xmprintf(0, "%s", s);
 }
 
-
 void ping(unsigned char id, unsigned int time) {
 	pingTime = std::chrono::steady_clock::now();
 	PingInfo pInfo;
@@ -45,31 +50,55 @@ void ping(unsigned char id, unsigned int time) {
 }
 
 
+void exitHandler(int s){
+	xmprintf(0, "exitHandler() Caught signal %d\n",s);
+
+	if (lidar) {
+		bool result = lidar->stopLidar();
+		xmprintf(6, "exitHandler() lidar stopped: %s \n", result ? "yes" : "no");
+		delete lidar; lidar = 0;
+	}
+	if (cli) {
+		cli->StopClient();
+		delete cli; cli = 0;
+	}
+	xmprintf(6, "exitHandler() filished\n");
+	exit(0); 
+}
+
 int main(int argc, char *argv[]) {
 	using namespace std::chrono_literals;
+	bool result;
 	eStartTime = std::chrono::steady_clock::now();
-
 	pingInfo.clear();
 	pingTime = std::chrono::steady_clock::now();
-	//xmprintf(0, "console starting .. ");
+	xmprintf(0, "eye starting .. \n");
 
-/*  G4 test 
-	startG4();
-	for (int k = 1; k < 100; k++) {
-		std::this_thread::sleep_for(100ms);
-	}
-	stopG4();
-
-	return 0;
-*/
-
+	// setup Ctrl^C
+	struct sigaction sigIntHandler;
+	sigIntHandler.sa_handler = exitHandler;
+	sigemptyset(&sigIntHandler.sa_mask);
+	sigIntHandler.sa_flags = 0;
+	sigaction(SIGINT, &sigIntHandler, NULL);
+ 
 	//cli.startClient(teeData);
-	std::thread tcp([&] { cli.startClient(teeData, ping); } );
+	Eye eye;
+
+	cli = new EthClient(eye);
+	std::thread tcp([&] { cli->startClient(); } );
+	
+	#ifdef G4LIDAR
+		lidar = new G4Lidar(eye);
+	#else
+		lidar = new SLidar(eye);  //this will do nothing
+	#endif
+	eye.setEthClient(cli);
+	result = lidar->startLidar();
 
 	std::this_thread::sleep_for(200ms);
+	eye.startEye();
 	tcp.join();
 	return 0;
-	
 
 	//xmprintf(0, "main thread started \n");
 	while (1) {
@@ -89,7 +118,7 @@ int main(int argc, char *argv[]) {
 
 			break;
 		}
-		if (!cli.isConnected()) {
+		if (!cli->isConnected()) {
 			xmprintf(0, "server disconnected \r\n");
 			break;
 		}
@@ -102,7 +131,7 @@ int main(int argc, char *argv[]) {
 	//for (int i = 0; i < 250; i++) { ungetc('q', stdin);   ungetc('\r', stdin);    ungetc('\n', stdin);  }
 
 	xmprintf(0, "stopping tcp .. \r\n");
-	cli.StopClient();
+	cli->StopClient();
 	tcp.join();
 	xmprintf(0, "tcp thread finished \r\n");
 
@@ -116,6 +145,8 @@ void assert_failed(const char* file, unsigned int line, const char* str) {
 	xmprintf(0, "AF: file %s, line %d, (%s)\n", file, line, str);
 }
 
+
+
 int XQSendInfo(const unsigned char* data, unsigned short int size) {
 
 	return 0;
@@ -127,6 +158,7 @@ static char sbuf[sbSize];
 static int currentLogLevel = 7;
 
 int xmprintf(int q, const char * s, ...) {
+
 	if (q > currentLogLevel) {
 		return 0;
 	}
