@@ -52,7 +52,7 @@ private:
 	std::thread st;
 	unsigned int rCounter = 0;
 	SLCalibration	calibration;
-	static const int fdSize = 5;
+	static const int fdSize = 3;
 	XMRoundBuf<double, fdSize> frontDistances;
 	void slRun();
 	double updateFrontDistance(double d);

@@ -17,8 +17,9 @@
 #ifdef G4LIDAR
 #include "g4.h"
 #endif
+#include "eye.h"
 
-EthClient cli;
+static EthClient* cli = 0;
 static SLidar* lidar = 0;
 
 std::chrono::time_point<std::chrono::steady_clock> pingTime;
@@ -57,7 +58,10 @@ void exitHandler(int s){
 		xmprintf(6, "exitHandler() lidar stopped: %s \n", result ? "yes" : "no");
 		delete lidar; lidar = 0;
 	}
-	cli.StopClient();
+	if (cli) {
+		cli->StopClient();
+		delete cli; cli = 0;
+	}
 	xmprintf(6, "exitHandler() filished\n");
 	exit(0); 
 }
@@ -78,21 +82,23 @@ int main(int argc, char *argv[]) {
 	sigaction(SIGINT, &sigIntHandler, NULL);
  
 	//cli.startClient(teeData);
-	std::thread tcp([&] { cli.startClient(teeData, ping); } );
+	Eye eye;
 
-	SimpleLC lc;
+	cli = new EthClient(eye);
+	std::thread tcp([&] { cli->startClient(); } );
 	
 	#ifdef G4LIDAR
-		lidar = new G4Lidar(lc);
+		lidar = new G4Lidar(eye);
 	#else
-		lidar = new SLidar(lc);  //this will do nothing
+		lidar = new SLidar(eye);  //this will do nothing
 	#endif
+	eye.setEthClient(cli);
 	result = lidar->startLidar();
 
 	std::this_thread::sleep_for(200ms);
+	eye.startEye();
 	tcp.join();
 	return 0;
-	
 
 	//xmprintf(0, "main thread started \n");
 	while (1) {
@@ -112,7 +118,7 @@ int main(int argc, char *argv[]) {
 
 			break;
 		}
-		if (!cli.isConnected()) {
+		if (!cli->isConnected()) {
 			xmprintf(0, "server disconnected \r\n");
 			break;
 		}
@@ -125,7 +131,7 @@ int main(int argc, char *argv[]) {
 	//for (int i = 0; i < 250; i++) { ungetc('q', stdin);   ungetc('\r', stdin);    ungetc('\n', stdin);  }
 
 	xmprintf(0, "stopping tcp .. \r\n");
-	cli.StopClient();
+	cli->StopClient();
 	tcp.join();
 	xmprintf(0, "tcp thread finished \r\n");
 
@@ -138,6 +144,8 @@ int main(int argc, char *argv[]) {
 void assert_failed(const char* file, unsigned int line, const char* str) {
 	xmprintf(0, "AF: file %s, line %d, (%s)\n", file, line, str);
 }
+
+
 
 int XQSendInfo(const unsigned char* data, unsigned short int size) {
 

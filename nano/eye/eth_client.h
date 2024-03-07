@@ -8,12 +8,19 @@
 #include <condition_variable>
 //#include <chrono>
 
-typedef void(*vf)(unsigned char, unsigned int);
-typedef void(*data_1)(char* s, int size);
-typedef void(*data_2)(char* s);
+//typedef void(*vf)(unsigned char, unsigned int);
+//typedef void(*data_1)(char* s, int size);
+//typedef void(*data_2)(char* s);
 
 //extern std::mutex mu;
 //extern std::condition_variable cv;
+
+class EthConsumer {
+	public:
+	virtual void ethData(char* s, int size) {}
+	virtual void ethPing(unsigned char, unsigned int) {}
+
+};
 
 /**
  * @brief  TCP ethernet client. 
@@ -22,11 +29,11 @@ typedef void(*data_2)(char* s);
  */
 class EthClient {
 public:
-	EthClient();
+	EthClient(EthConsumer& consumer_);
 	/**
 	 * \return true if OK
 	*/
-	bool startClient(data_1 cb, vf ping); // , int msTimeout)
+	bool startClient(); // , int msTimeout)
 	void StopClient();
 	/**
 	 * \return 
@@ -44,8 +51,6 @@ enum EState {
 };
 	EState eState = esInit;
 	bool connectedToTeensy = false;
-	vf pingReply = 0;				///  this will be called on a ping arrival
-
 	//  -------------for log file downloading----------------------
 	int readingTheLogFile = 0;
 	int lastReportedProgress = 0;
@@ -74,8 +79,7 @@ enum EState {
 	void start_write();
 	void makeReconnect();
 	void process(boost::system::error_code ec, std::size_t len);
-	data_1 cb1 = 0;
-	vf ping1 = 0;
+	EthConsumer& consumer;
 
 	std::mutex mu, muOutbox;
 	std::condition_variable cv;

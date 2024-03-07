@@ -23,20 +23,17 @@ int xmprintf(int q, const char * s, ...);
 
 static const int ethHeaderSize = 16;
 
-EthClient::EthClient() : socket_(io_context), deadline_(io_context),  heartbeat_timer_(io_context){
+EthClient::EthClient(EthConsumer& consumer_): consumer(consumer_), socket_(io_context), deadline_(io_context),  heartbeat_timer_(io_context){
 	pleaseStop = false;
 	connectedToTeensy = false;
 	eState = esInit;
-
-	pingReply = 0;
-	cb1 = 0;
 
 	// log file --------------
 	readingTheLogFile = 0;
 	theFile = 0;
 }
 
-bool EthClient::startClient(data_1 cb, vf ping) { // , int msTimeout
+bool EthClient::startClient(){ // , int msTimeout
 	using boost::asio::ip::tcp;
 	using boost::asio::ip::address;
 
@@ -49,9 +46,6 @@ bool EthClient::startClient(data_1 cb, vf ping) { // , int msTimeout
 	theFile = 0;
 	lastReportedProgress = 0;
 	outbox_.clear();
-
-	cb1 = cb;			//  remember the callbacks
-	ping1 = ping;
 
 	xmprintf(5, "EthClient::startClient() starting \n");
 
@@ -318,9 +312,10 @@ void EthClient::process(boost::system::error_code ec, std::size_t len) {
 		unsigned int time;
 		memcpy(&time, buf + 4, 4);
 		id = (unsigned char)(buf[8]);
-		if (ping1 != 0) {
-			ping1(id, time);
-		}
+		//if (ping1 != 0) {
+		//	ping1(id, time);
+		//}
+		consumer.ethPing(id, time);
 		xmprintf(9, "\t got ping[%u] from teensy\n", id);
 	} else if (readingTheLogFile != 0) {
 		assert(len < bufSize);
@@ -328,9 +323,10 @@ void EthClient::process(boost::system::error_code ec, std::size_t len) {
 		readingTheFile(buf, len);
 	} else{
 		
-		if (cb1 != 0) {
-			cb1(buf, len);
-		}
+		//if (cb1 != 0) {
+		//	cb1(buf, len);
+		//}
+		consumer.ethData(buf, len);
 		buf[bufSize-1] = 0;
 		xmprintf(10, "\t got %d bytes (%s)\n", len, buf);
 	}
@@ -343,7 +339,8 @@ void EthClient::readingTheFile(char* buf, int len) {
 	const char* sch;
 	switch (readingTheLogFile) {
 		case 1:
-			cb1(buf, len);
+			//cb1(buf, len);
+			consumer.ethData(buf, len);
 			if (((sch = strstr(buf, "ack,")) != NULL) && (sch[4] != 0)) {
 				fileSize = 0;
 				int k = sscanf(sch + 4, "%d", &fileSize);
