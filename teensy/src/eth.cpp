@@ -127,7 +127,7 @@ void ethSetup() {
 	pingStruct.id = 0; pingStruct.time = millis(); pingStruct.reserved[0] = 0;
 
 	client = server.available();
-	ledstripMode(lsEyeConnection, 200, 0x00000008);
+	ledstripMode(lsEyeConnection, 128, 0x00000008);
 	lastIncomingInfoTime = 0;
 	xmprintf(1, "eth started 2; client=%s \r\n", client ? "yes" : "no");
 }
@@ -146,7 +146,7 @@ void ethFeed(char* s, int size) {
 void ethLoop(unsigned int now) {
 	if ((now - lastIncomingInfoTime) > 1250) {
 		//xmprintf(1, "ethLoop() disconnected?")
-		ledstripMode(lsEyeConnection, 200, 0x00a000a0);
+		ledstripMode(lsEyeConnection, 128, 0x00900080);
 	}
 
 	EthernetLinkStatus currentLinkStatus = Ethernet.linkStatus();
@@ -160,7 +160,7 @@ void ethLoop(unsigned int now) {
 		if (clientConnected) {
 			clientConnected = false;
 			xmprintf(1, "ETH client disconnected 3;  linkStatus = %d\r\n", linkStatus);
-			ledstripMode(lsEyeConnection, 200, 0x00000095);
+			ledstripMode(lsEyeConnection, 128, 0x00000075);
 		}
 		return;
 	}
@@ -174,7 +174,7 @@ void ethLoop(unsigned int now) {
 		if (clientConnected) {
 			clientConnected = false;
 			xmprintf(1, "ETH client disconnected 2 \r\n");
-			ledstripMode(lsEyeConnection, 200, 0x00000095);
+			ledstripMode(lsEyeConnection, 128, 0x00000075);
 		}
 		return;
 	}
@@ -216,7 +216,7 @@ void ethLoop(unsigned int now) {
 		//xmprintf(2, "ETH: got %d bytes {%s} \r\n", bs1, packetBuffer);
 		if ((bs1 > 0)) {
 			lastIncomingInfoTime = now;
-			ledstripMode(lsEyeConnection, 200, 0x0000a000);
+			ledstripMode(lsEyeConnection, 128, 0x00007500);
 		 	if (strncmp(packetBuffer, "console", 7) == 0 ) {  //  console client connected
 				client.write("tee ", 4);
 			} else if (strncmp(packetBuffer, "ping", 4) == 0 ) {

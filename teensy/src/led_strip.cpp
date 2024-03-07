@@ -62,8 +62,9 @@ void ledstripSetup() {
 	FastLED.addLeds<LED_CHIPSET, PIN_DATA, PIN_CLOCK, LED_ORDER>(leds, NUM_LEDS);
 
 	for (int i = 0; i < NUM_LEDS; ++i) {
-		leds[i] = CRGB::Green;
+		leds[i] = 0x00000300;
 	}
+	leds[1] = 0x00090008;
 	FastLED.show();
 }
 
@@ -131,7 +132,7 @@ void ledstripProcess(unsigned int now) {
 		//  this led is still empty..
 	}
 
-	const int ecp = 1000;
+	const int ecp = 585;
 	if (lsModes[lsEyeConnection] != 0) { //  connection: special case
 		k = now % (ecp << 1);
 		float u;
