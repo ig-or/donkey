@@ -225,6 +225,33 @@ bool EthClient::checkThePacket(char* buf, int& len) {
 	return true;
 }
 
+/*	static const int smBufSize = 512;
+	unsigned char smBuf[smBufSize];
+	int smBufIndex = 0;
+	*/
+int EthClient::do_write(const unsigned char* buf, int size) {
+	if ((buf == 0) || (size < 1)) {
+		return 0;
+	}
+	if (!connectedToTeensy) {
+		return 0;
+	}
+	std::lock_guard<std::mutex> lk(muOutbox);
+	int u = smBufSize - smBufIndex - 1; // the space that we have
+	if (u < 10) {
+		xmprintf(1, "EthClient::do_write overflow 1; u = %d \n", u);
+		return 0;
+	}
+	if (u < size) { //  overflow
+		xmprintf(1, "EthClient::do_write overflow 2; u = %d \n", u);
+		return 0;
+	} else { // OK
+		u = size;
+	}
+	memcpy(smBuf + smBufIndex, buf, u);
+	smBufIndex += u;
+	boost::asio::post(io_context,   [this]()   {   heartbeat_timer_.cancel();   });
+}
 
 int EthClient::do_write(const char* s) {
 	if (s == 0) {
@@ -507,6 +534,7 @@ void EthClient::do_read() {
 
 void EthClient::start_write()  {
 	if (pleaseStop) {
+		xmprintf(5, "\tEthClient::start_write : pleaseStop!\n");
 		return;
 	}
 	if (eState != esConnected) {
@@ -517,19 +545,25 @@ void EthClient::start_write()  {
 	xmprintf(9, "EthClient::start_write()  Start an asynchronous operation to send a message. \n");
 	std::string s;   //   a string to write
 	std::lock_guard<std::mutex> lk(muOutbox);
-	if (outbox_.empty()) {
+	if (outbox_.empty() && (smBufIndex == 0)) {
 		s = "ping";
+		boost::asio::async_write(socket_, boost::asio::buffer(s), std::bind(&EthClient::handle_write, this, _1));
 	} else {
-		s = outbox_.front();
-		outbox_.pop_front();
+		if (smBufIndex != 0) {
+			boost::asio::async_write(socket_, boost::asio::buffer(smBuf, smBufIndex), std::bind(&EthClient::handle_write, this, _1));
+			smBufIndex = 0;
+		} else if (!outbox_.empty()) {
+			s = outbox_.front();
+			outbox_.pop_front();
+			boost::asio::async_write(socket_, boost::asio::buffer(s), std::bind(&EthClient::handle_write, this, _1));
+		}
 	}
-	boost::asio::async_write(socket_, boost::asio::buffer(s),
-		std::bind(&EthClient::handle_write, this, _1));
 }
 
 void EthClient::handle_write(const boost::system::error_code& error)   {
 	xmprintf(9, "EthClient::handle_write(error = %s) \n", error.message().c_str());
 	if (pleaseStop) {
+		xmprintf(9, "\tEthClient::handle_write pleaseStop! \n");
 		return;
 	}
 	if (eState != esConnected) {
@@ -538,24 +572,26 @@ void EthClient::handle_write(const boost::system::error_code& error)   {
 	}
 
 	if (!error)     {
-		xmprintf(9, "EthClient::handle_write; \n");
+		
 		muOutbox.lock();
-		bool oEmpty = outbox_.empty();
+		bool oEmpty = outbox_.empty() && (smBufIndex == 0);
 		muOutbox.unlock();
 		if (oEmpty) {			// nothing to send right now. 
+			xmprintf(9, "\tEthClient::handle_write: no error, waiting..  \n");
 			heartbeat_timer_.expires_after(std::chrono::milliseconds(380));
 			heartbeat_timer_.async_wait(std::bind(&EthClient::start_write, this));
 		}  else {
+			xmprintf(9, "\tEthClient::handle_write: no error, calling  start_write() \n");
 			start_write();	// there is something in the queue
 		}
 	}  else {
 		if (error.value() ==  boost::asio::error::operation_aborted) { // we just add something to write maybe
-			xmprintf(9, "EthClient::handle_write: error = operation_aborted, so queue is not empty\n");
+			xmprintf(9, "\tEthClient::handle_write: error = operation_aborted, so queue is not empty\n");
 			start_write();
 		} else {  //   serious error like disconnect
 			xmprintf(4, "EthClient::handle_write(Error on heartbeat: error = %s) \n", error.message().c_str());
 			socket_.close();
-			xmprintf(4, "\tdisconnected ? \n");
+			xmprintf(4, "\tdisconnected ? makeReconnect!\n");
 
 			makeReconnect();
 		}

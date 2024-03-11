@@ -14,6 +14,8 @@
 #include "eth_client.h"
 #include "lidar.h"
 #include <xmroundbuf.h>
+#include "xmessagesend.h"
+#include "xmessage.h"
 #ifdef G4LIDAR
 #include "g4.h"
 #endif
@@ -21,6 +23,8 @@
 
 static EthClient* cli = 0;
 static SLidar* lidar = 0;
+static Eye e;
+static int currentLogLevel = 7; // 7
 
 std::chrono::time_point<std::chrono::steady_clock> pingTime;
 int xmprintf(int q, const char * s, ...);
@@ -62,6 +66,7 @@ void exitHandler(int s){
 		cli->StopClient();
 		delete cli; cli = 0;
 	}
+	e.stopEye();
 	xmprintf(6, "exitHandler() filished\n");
 	exit(0); 
 }
@@ -72,7 +77,7 @@ int main(int argc, char *argv[]) {
 	eStartTime = std::chrono::steady_clock::now();
 	pingInfo.clear();
 	pingTime = std::chrono::steady_clock::now();
-	xmprintf(0, "eye starting .. \n");
+	xmprintf(0, "starting .. currentLogLevel = %d\n", currentLogLevel);
 
 	// setup Ctrl^C
 	struct sigaction sigIntHandler;
@@ -81,61 +86,29 @@ int main(int argc, char *argv[]) {
 	sigIntHandler.sa_flags = 0;
 	sigaction(SIGINT, &sigIntHandler, NULL);
  
-	//cli.startClient(teeData);
-	Eye eye;
-
-	cli = new EthClient(eye);
+	cli = new EthClient(e);
 	std::thread tcp([&] { cli->startClient(); } );
 	
 	#ifdef G4LIDAR
-		lidar = new G4Lidar(eye);
+		lidar = new G4Lidar(e);
 	#else
-		lidar = new SLidar(eye);  //this will do nothing
+		lidar = new SLidar(e);  //this will do nothing
 	#endif
-	eye.setEthClient(cli);
+	e.setEthClient(cli);
 	result = lidar->startLidar();
 
 	std::this_thread::sleep_for(200ms);
-	eye.startEye();
-	tcp.join();
-	return 0;
+	e.startEye();
+	
 
-	//xmprintf(0, "main thread started \n");
-	while (1) {
-		std::this_thread::sleep_for(100ms);
-
-		std::chrono::time_point<std::chrono::steady_clock> now = std::chrono::steady_clock::now();
-		long long dt = std::chrono::duration_cast<std::chrono::milliseconds>(now - pingTime).count(); //  how long ago was the last ping
-		if (dt > 1500) {
-			xmprintf(0, "ping timeout; dt = %llu milliseconds \r\n", dt);
-
-			//xmprintf(0, "111 \r\n");	
-			xmprintf(0, "ping times: \r\n");
-			for (int i = 0; i < pingInfo.num; i++) {
-				long long dx = std::chrono::duration_cast<std::chrono::milliseconds>(now - pingInfo[i].pcTime).count();
-				xmprintf(0, "%d\t(%u, %u, %llu)   \r\n", i, pingInfo[i].id, pingInfo[i].teensyTime, dx);
-			}
-
-			break;
-		}
-		if (!cli->isConnected()) {
-			xmprintf(0, "server disconnected \r\n");
-			break;
-		}
+	//xmprintf(0, "stopping tcp .. \r\n");
+	//cli->StopClient();
+	//tcp.join();
+	//xmprintf(0, "tcp thread finished \r\n");
+	
+	while(1) {
+		std::this_thread::sleep_for(200ms);
 	}
-	//xmprintf(0, "222 \r\n");
-
-	//ungetc('q', stdin);
-	//xmprintf(0, "exiting .. ");
-	//std::cout << "exiting .. ";
-	//for (int i = 0; i < 250; i++) { ungetc('q', stdin);   ungetc('\r', stdin);    ungetc('\n', stdin);  }
-
-	xmprintf(0, "stopping tcp .. \r\n");
-	cli->StopClient();
-	tcp.join();
-	xmprintf(0, "tcp thread finished \r\n");
-
-	std::this_thread::sleep_for(200ms);
 
 	xmprintf(0, "eye stop\r\n");
 	return 0;
@@ -145,17 +118,67 @@ void assert_failed(const char* file, unsigned int line, const char* str) {
 	xmprintf(0, "AF: file %s, line %d, (%s)\n", file, line, str);
 }
 
+// -----------------------------------------------------------------------------------------------------------------------
 
+static std::mutex msgSendMutex;
+const int smBufSize = maxxMessageSize*2;
+unsigned char smBuf[smBufSize];
+unsigned int smBufIndex = 0;
+void sendMsg(const unsigned char* data, unsigned char type, unsigned short int size) {
+	if (cli == 0) {
+		return;
+	}
+	std::lock_guard<std::mutex> lk(msgSendMutex);   //  this might be called from different threads
+	smBufIndex = 0;
+	sendMessage(data, type, size);
+	//if (cli != 0) {
+		cli->do_write(smBuf, smBufIndex);
+	//}
+}
 
+/**
+ * this is called from inside 'sendMessage' several times. 
+ * This function puts data into smBuf
+*/
 int XQSendInfo(const unsigned char* data, unsigned short int size) {
-
+	int u  = smBufSize - smBufIndex - 1;
+	if (u < size) { // space available smaller than we need
+		xmprintf(1, "XQSendInfo overflow \n");
+	} else {
+		u = size;
+	}
+	memcpy(smBuf + smBufIndex, data, u);
+	smBufIndex += size;
 	return 0;
 }
+
+/**
+ * @brief make a message with several 'float' numbers
+ * 
+ * @param type message type
+ * @param ...  all the float numbers
+ * @return message size in bytes
+ */
+int sendFmessage(unsigned char type, int n, ...) {
+	va_list args;
+	va_start(args, n);
+	float* ftmp = new float[n];
+	for (int i = 0; i < n; i++) 	{
+		ftmp[i] = va_arg (args, double);
+	}
+	int u = n * sizeof(float);
+	sendMsg((const unsigned char*)ftmp, type, u);
+	va_end(args);
+	delete[] ftmp;
+	return u;
+}
+
+// -----------------------------------------------------------------------------------------------------------------------
 
 static std::mutex xmpMutex;
 static const int sbSize = 1024;
 static char sbuf[sbSize];
-static int currentLogLevel = 7;
+
 
 int xmprintf(int q, const char * s, ...) {
 

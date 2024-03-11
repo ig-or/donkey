@@ -7,7 +7,7 @@
 #include "xmessage.h"
 
 enum MsgTypes {
-	mgFrontObstacle,
+	mgFrontObstacle = xqm::message_count,
 	mgRearObstacle
 };
 #pragma pack(1)
@@ -23,16 +23,7 @@ struct MFrontObstacle {
 
 #pragma pack()
 
-/**
- * @brief make a message with several 'float' numbers
- * 
- * @param type message type
- * @param buf where to put everything
- * @param  bufSize size of 'buf'
- * @param ...  all the float numbers
- * @return message size in bytes
- */
-int makeFmessage(MsgTypes type, char* buf, int bufSize, ...);
+
 
 /**
  * @brief 
@@ -41,7 +32,7 @@ int makeFmessage(MsgTypes type, char* buf, int bufSize, ...);
  * @param type 
  * @return char*  a pointer to the message body
  */
-char* makeMsgHeader(char* msg, MsgTypes type);
+//char* makeMsgHeader(char* msg, MsgTypes type);
 /**
  * @brief 
  * 
@@ -49,4 +40,4 @@ char* makeMsgHeader(char* msg, MsgTypes type);
  * @param type 
  * @return char* 
  */
-char* makeTail(char* msg, MsgTypes type);
+//char* makeTail(char* msg, MsgTypes type);

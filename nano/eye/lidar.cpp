@@ -83,7 +83,12 @@ double SLidar::updateFrontDistance(double d) {
 	//}
 	double tmp[fdSize];
 	memcpy(tmp, frontDistances.buf, fdSize * sizeof(double));
-	double  a = opt_med5(tmp);
+	double a = 0.0;
+	switch (fdSize) {
+		case 3: a = opt_med3(tmp); break;
+		case 5: a = opt_med5(tmp); break;
+		default: break;
+	};
 	return a;
 }
 
@@ -107,19 +112,23 @@ void SLidar::slRun() {
 
 	while (!pleaseStop) {
 		std::this_thread::yield();
+		//continue;
 		test = getScan(p, np);
 		if (!test) {
 			continue;
 		}
 		//xmprintf(12, "SLidar::slRun() got %d points   \n", np);
 		lc.slScan(p, np);
+		//continue;
 		d = checkFrontDistance(p, np, calibration);
+		//continue;
 		d1 = updateFrontDistance(d);
+		//continue;
 		lc.slFrontObstacle(d1);
 
 		rCounter += 1;
 	}
-	xmprintf(5, "SLidar::slRun()    stoppint the lidar \n");
+	xmprintf(5, "SLidar::slRun()    stopping the lidar \n");
 	test = slStop();
 
 
