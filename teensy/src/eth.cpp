@@ -236,6 +236,8 @@ void ethLoop(unsigned int now) {
 					xmprintf(2, "ETH: got %s\r\n", packetBuffer);
 				}
 			} else { // just normal command
+				
+
 				int bs2 = (bs1 >= maxPacketSize) ? maxPacketSize-1 : bs1;
 				packetBuffer[bs2] = 0;
 				processTheCommand(packetBuffer, bs2); // process the command

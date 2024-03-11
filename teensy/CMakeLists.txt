@@ -53,6 +53,8 @@ FOREACH(i ${foldersList})
 	addSourceFiles0(${i} ${i})
 ENDFOREACH()
 
+addSourceFiles(interface "../src" eth_api)
+
 # add some of the matrix and 'common' files:
 addSourceFiles(matrix "${xqt}/matrix/src" 
 	xmatrix_imp xmatrix2 xmfilter xmgsl
