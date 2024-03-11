@@ -23,6 +23,4 @@ private:
 	void ethPing(unsigned char, unsigned int);
 	void see();
 
-
-
 };

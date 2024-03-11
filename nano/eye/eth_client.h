@@ -39,6 +39,7 @@ public:
 	 * \return 
 	*/
 	int do_write(const char* s);
+	int do_write(const unsigned char* buf, int size);
 	bool isConnected() {
 		return connectedToTeensy;
 	}
@@ -86,6 +87,11 @@ enum EState {
 	boost::asio::steady_timer deadline_;
 	boost::asio::steady_timer heartbeat_timer_;
 	std::deque<std::string> outbox_;				///  messages to write
+
+	//  for writing binary info
+	static const int smBufSize = 512;
+	unsigned char smBuf[smBufSize];
+	int smBufIndex = 0;
 	
 };
 

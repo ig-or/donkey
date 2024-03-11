@@ -35,10 +35,10 @@ void Eye::startEye() {
 	st = std::thread(&Eye::see, this);
 }
 void Eye::stopEye() {
+	pleaseStop = true;
 	if (!st.joinable()) { //  already stopped?
 		return;
 	}
-	pleaseStop = true;
 	st.join();
 }
 void Eye::see() {
