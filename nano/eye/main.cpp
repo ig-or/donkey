@@ -124,16 +124,18 @@ static std::mutex msgSendMutex;
 const int smBufSize = maxxMessageSize*2;
 unsigned char smBuf[smBufSize];
 unsigned int smBufIndex = 0;
-void sendMsg(const unsigned char* data, unsigned char type, unsigned short int size) {
+
+int sendMsg(const unsigned char* data, unsigned char type, unsigned short int size) {
 	if (cli == 0) {
-		return;
+		return 0;
 	}
 	std::lock_guard<std::mutex> lk(msgSendMutex);   //  this might be called from different threads
 	smBufIndex = 0;
-	sendMessage(data, type, size);
+	int test = sendMessage(data, type, size);
 	//if (cli != 0) {
 		cli->do_write(smBuf, smBufIndex);
 	//}
+	return test;
 }
 
 /**
@@ -141,9 +143,13 @@ void sendMsg(const unsigned char* data, unsigned char type, unsigned short int s
  * This function puts data into smBuf
 */
 int XQSendInfo(const unsigned char* data, unsigned short int size) {
+	if ((data == 0) || (size < 1)) {
+		return 0;
+	}
 	int u  = smBufSize - smBufIndex - 1;
 	if (u < size) { // space available smaller than we need
 		xmprintf(1, "XQSendInfo overflow \n");
+		return 0;
 	} else {
 		u = size;
 	}

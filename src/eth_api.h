@@ -41,3 +41,10 @@ struct MFrontObstacle {
  * @return char* 
  */
 //char* makeTail(char* msg, MsgTypes type);
+
+int sendMsg(const unsigned char* data, unsigned char type, unsigned short int size);
+template<class T> int sendMsg(const T* info/*, unsigned int timestamp*/) {
+	int ret;
+	ret = sendMsg((unsigned char*)(info), T::type, sizeof(T)/*, timestamp*/);
+	return ret;
+}

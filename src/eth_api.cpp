@@ -4,4 +4,6 @@
 
 int makeFmessage(MsgTypes type, char* buf, int bufSize, ...) {
 	
+
+	return 0;
 }

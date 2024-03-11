@@ -1,6 +1,8 @@
 
 
 #include "eye.h"
+#include "eth_api.h"
+#include "xmessagesend.h"
 
 int xmprintf(int q, const char * s, ...);
 
@@ -14,9 +16,13 @@ void Eye::slScan(SLPoint* p, int n) {
 
 }
 void Eye::slFrontObstacle(float distance) {
-	if (sfCounter % 10 == 0) {
+	MFrontObstacle m;
+	m.distance = distance;
+	sendMsg(&m);
+	if (sfCounter % 1 == 0) {
 		xmprintf(6, "distance = %.3f\n", distance);
 	}
+
 
 	sfCounter += 1;
 }
