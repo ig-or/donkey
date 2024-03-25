@@ -41,11 +41,13 @@ void Eye::startEye() {
 	st = std::thread(&Eye::see, this);
 }
 void Eye::stopEye() {
+	xmprintf(6, "stopping eye ...  \n");
 	pleaseStop = true;
 	if (!st.joinable()) { //  already stopped?
 		return;
 	}
 	st.join();
+	xmprintf(6, "eye finished  \n");
 }
 void Eye::see() {
 	while (!pleaseStop) {

@@ -115,6 +115,7 @@ void EthClient::handle_connect(const boost::system::error_code& error,  const bo
 		outbox_.clear();
 		do_read();// Start the input actor.
 		start_write();// Start the heartbeat actor.
+		do_write("console ");
     }
 }
 
@@ -230,12 +231,14 @@ bool EthClient::checkThePacket(char* buf, int& len) {
 	int smBufIndex = 0;
 	*/
 int EthClient::do_write(const unsigned char* buf, int size) {
+	xmprintf(9, "EthClient::do_write()  size = %d bytes; connectedToTeensy=%s\n", size, connectedToTeensy?"yes":"no");
 	if ((buf == 0) || (size < 1)) {
 		return 0;
 	}
 	if (!connectedToTeensy) {
 		return 0;
 	}
+
 	std::lock_guard<std::mutex> lk(muOutbox);
 	int u = smBufSize - smBufIndex - 1; // the space that we have
 	if (u < 10) {
@@ -250,6 +253,7 @@ int EthClient::do_write(const unsigned char* buf, int size) {
 	}
 	memcpy(smBuf + smBufIndex, buf, u);
 	smBufIndex += u;
+	xmprintf(9, "\tEthClient::do_write()  smBufIndex = %d;   canceling  heartbeat_timer_\n", smBufIndex);
 	boost::asio::post(io_context,   [this]()   {   heartbeat_timer_.cancel();   });
 }
 
@@ -547,14 +551,17 @@ void EthClient::start_write()  {
 	std::lock_guard<std::mutex> lk(muOutbox);
 	if (outbox_.empty() && (smBufIndex == 0)) {
 		s = "ping";
+		xmprintf(9, "EthClient::start_write()  sending a ping \n");
 		boost::asio::async_write(socket_, boost::asio::buffer(s), std::bind(&EthClient::handle_write, this, _1));
 	} else {
 		if (smBufIndex != 0) {
+			xmprintf(9, "EthClient::start_write()  sending binary info, smBufIndex = %d \n", smBufIndex); 
 			boost::asio::async_write(socket_, boost::asio::buffer(smBuf, smBufIndex), std::bind(&EthClient::handle_write, this, _1));
 			smBufIndex = 0;
 		} else if (!outbox_.empty()) {
 			s = outbox_.front();
 			outbox_.pop_front();
+			xmprintf(9, "EthClient::start_write()  sending a string from outbox_\n");
 			boost::asio::async_write(socket_, boost::asio::buffer(s), std::bind(&EthClient::handle_write, this, _1));
 		}
 	}

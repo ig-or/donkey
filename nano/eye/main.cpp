@@ -24,7 +24,8 @@
 static EthClient* cli = 0;
 static SLidar* lidar = 0;
 static Eye e;
-static int currentLogLevel = 7; // 7
+static int currentLogLevel = 10; // 7
+static std::mutex msgSendMutex;
 
 std::chrono::time_point<std::chrono::steady_clock> pingTime;
 int xmprintf(int q, const char * s, ...);
@@ -56,7 +57,8 @@ void ping(unsigned char id, unsigned int time) {
 
 void exitHandler(int s){
 	xmprintf(0, "exitHandler() Caught signal %d\n",s);
-
+	std::lock_guard<std::mutex> lk(msgSendMutex); 
+	e.stopEye();
 	if (lidar) {
 		bool result = lidar->stopLidar();
 		xmprintf(6, "exitHandler() lidar stopped: %s \n", result ? "yes" : "no");
@@ -64,9 +66,10 @@ void exitHandler(int s){
 	}
 	if (cli) {
 		cli->StopClient();
+		xmprintf(6, "exitHandler():  tcp client stopped \n");
 		delete cli; cli = 0;
 	}
-	e.stopEye();
+	
 	xmprintf(6, "exitHandler() filished\n");
 	exit(0); 
 }
@@ -120,16 +123,17 @@ void assert_failed(const char* file, unsigned int line, const char* str) {
 
 // -----------------------------------------------------------------------------------------------------------------------
 
-static std::mutex msgSendMutex;
+
 const int smBufSize = maxxMessageSize*2;
 unsigned char smBuf[smBufSize];
 unsigned int smBufIndex = 0;
 
 int sendMsg(const unsigned char* data, unsigned char type, unsigned short int size) {
+	std::lock_guard<std::mutex> lk(msgSendMutex);   //  this might be called from different threads
 	if (cli == 0) {
 		return 0;
 	}
-	std::lock_guard<std::mutex> lk(msgSendMutex);   //  this might be called from different threads
+	
 	smBufIndex = 0;
 	int test = sendMessage(data, type, size);
 	//if (cli != 0) {
