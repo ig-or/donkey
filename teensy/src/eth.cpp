@@ -7,6 +7,7 @@
 #include "rbuf.h"
 #include "xstdef.h"
 #include "cmdhandler.h"
+#include "xmessage.h"
 #include "xmroundbuf.h"
 #include "led_strip.h"
 
@@ -236,11 +237,14 @@ void ethLoop(unsigned int now) {
 					xmprintf(2, "ETH: got %s\r\n", packetBuffer);
 				}
 			} else { // just normal command
-				
-
-				int bs2 = (bs1 >= maxPacketSize) ? maxPacketSize-1 : bs1;
-				packetBuffer[bs2] = 0;
-				processTheCommand(packetBuffer, bs2); // process the command
+				if ((bs1 >= 10) && (memcmp(packetBuffer, "XMR ", 4) == 0)) {
+					xqm::MsgHeader* h = (xqm::MsgHeader*)(packetBuffer);
+					xmprintf(1, "got message type %d; length = %d;  count = %d\r\n", h->type, h->length, h->count);
+				} else {
+					int bs2 = (bs1 >= maxPacketSize) ? maxPacketSize-1 : bs1;
+					packetBuffer[bs2] = 0;
+					processTheCommand(packetBuffer, bs2); // process the command
+				}
 			}
 		}
 	}
