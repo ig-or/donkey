@@ -142,7 +142,7 @@ extern "C" int main(void) {
 		
 		//while(1)  {
 		//	delay(2);
-		//	yield();
+		//	yield();ar
 		//}
 		
 		//axSmoothCounter = 0;

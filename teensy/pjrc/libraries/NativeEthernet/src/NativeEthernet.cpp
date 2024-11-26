@@ -290,8 +290,8 @@ void EthernetClass::begin(uint8_t *mac, IPAddress ip, IPAddress dns, IPAddress g
     fnet_netif_set_ip4_gateway(fnet_netif_get_default(), gateway);
     fnet_netif_set_ip4_dns(fnet_netif_get_default(), dns);
     
-    while(!link_status){
-    }
+   // while(!link_status){
+  //  }
 }
 
 void EthernetClass::init(uint8_t sspin)
