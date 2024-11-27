@@ -151,9 +151,9 @@ extern "C" int main(void) {
 		//	setMSpeed(axSmoothed, axSmoothed);
 		//}
 
-		ethLoop(msNow);		//  ethernet
-		lfProcess();  	//  log file
-		ledstripProcess(msNow);
+		ethLoop(msNow);					//  ethernet
+		lfProcess();  					//  log file
+		ledstripProcess(msNow);			
 
 		//yield();
 		//continue;

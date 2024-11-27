@@ -23,7 +23,8 @@ enum LSFlashMode {
 	lsFrontObstacle,		/// front obstacle detected
 	lsRearObstakle,
 	lsStop,					///   we are not moving
-	lsEyeConnection,		/// indication of the connection wit hthe eye sw
+	lsEyeConnection,		/// indication of the connection with the eye sw
+	lsManualControl,		/// manual control from radio transmitter / receiver 
 	lsModesCount
 };
 /// @brief  setup everything

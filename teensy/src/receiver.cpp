@@ -7,6 +7,7 @@
 #include "ttpins.h"
 #include "teetools.h"
 #include "xmfilter.h"
+#include "led_strip.h"
 
 //int delta = 2;
 
@@ -60,13 +61,16 @@ void RCHCalibration::startReceiverChannelCalibration(unsigned int now) {
 	calibrationDataTimeMs = now;
 	calibrationDataCounter = 0;
 	rccInfo.rciReset();
+	ledstripMode(lsManualControl, 128, 0x00000075);
 	xmprintf(3, "starting receiver ch calibration..  please wait \r\n" );
 }
 void RCHCalibration::calibrationFailed() {
+	ledstripMode(lsManualControl, 128, 0x00750000);
 	xmprintf(3, "calibration failed \r\n");
 	cState = rcNo;
 }
 void RCHCalibration::zeroCalibrationComplete() {
+	ledstripMode(lsManualControl, 128, 0x00007500);
 	xmprintf(3, "zero calibration completed \r\n");
 	cState = rcComplete;
 }
@@ -175,6 +179,7 @@ void receiverSetup() {
 
 	attachInterrupt( rcv_ch1pin, checkCH1, CHANGE );  
 	attachInterrupt( rcv_ch2pin, checkCH2, CHANGE );  
+	ledstripMode(lsManualControl, 128, 0x00000008);
 	xmprintf(17, "...OK \r\n");
 }
 

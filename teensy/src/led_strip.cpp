@@ -34,6 +34,7 @@ const unsigned int rearLeds = 0x20000000;		// 29
 
 const int stopCycle = 2000;
 int lsEyeConnectionLed = 0;
+int lsManualControlLed = 1;
 
 void setupModeLeds() {
 	lsModeLeds[lsFrontObstacle] =  frontLeds; 
@@ -99,6 +100,39 @@ void ledstripMode(LSFlashMode mode, unsigned char intensity, unsigned int color)
 
 unsigned int ltmp[NUM_LEDS];
 
+/**
+ * @brief calculate a value for the led based on intencity and color and time.
+ * 
+ * @param now  current time
+ * @param mode      mode (intencity)
+ * @param color     color info
+ * @return unsigned int  led value for the library
+ */
+unsigned int lsRamp(unsigned int now, int mode, unsigned int color) {
+	const int ecp = 585;
+	unsigned int k = now % (ecp << 1);
+	float u;
+	int i = mode;
+	if (k <= ecp) {
+		u = (k * i) / ((float)(ecp));
+	} else {
+		u = (i << 1) - (k * i) / ((float)(ecp));
+	}
+	int a = round(u);
+	if (a < 0) a = 0;
+	if (a > 255) a = 255;
+
+	unsigned int c = color;
+	unsigned int b = 0;
+	b += ((c & 0xff) * a) >> 8;   c >>= 8;   // b
+	b += (((c & 0xff) * a) >> 8) << 8;   c >>= 8;	// g
+	b += (((c & 0xff) * a) >> 8) << 16;    	// r
+	if (b == 0) {
+		b = 1;
+	}
+	return b;
+}
+
 void ledstripProcess(unsigned int now) {
 	if (now < (lsProcessTime + 50)) {
 		return;
@@ -111,6 +145,7 @@ void ledstripProcess(unsigned int now) {
 		if (j == lsEyeConnectionLed) {
 			continue;
 		}
+		if ((j == lsManualControlLed) && (lsModes[lsManualControl] != 0))
 		b = 1 << j;										//   led mask
 		for (i = 0; i < lsModesCount; i++) {
 			if (lsModes[i] == 0) {
@@ -133,7 +168,12 @@ void ledstripProcess(unsigned int now) {
 	}
 
 	const int ecp = 585;
+	if (lsModes[lsManualControl] != 0) {
+		ltmp[lsManualControlLed] = lsRamp(now, lsModes[lsManualControl], lsModeColors[lsManualControl]);
+	}
 	if (lsModes[lsEyeConnection] != 0) { //  connection: special case
+		ltmp[lsEyeConnectionLed] = lsRamp(now, lsModes[lsEyeConnection], lsModeColors[lsEyeConnection]);
+/*
 		k = now % (ecp << 1);
 		float u;
 		int i = lsModes[lsEyeConnection];
@@ -161,6 +201,7 @@ void ledstripProcess(unsigned int now) {
 		//	xmprintf(1, "ledstripProcess  b = %u; k = %d; i = %u, u = %.3f, a = %d, c = %u, lsModeColors = %u  \r\n", b, k, i, u, a, c,
 		//		lsModeColors[lsEyeConnection]);
 		//}
+		*/
 	}
 
 	if (lsModes[lsStop] != 0) {			//   stop mode is a spesial case
