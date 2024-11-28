@@ -7,7 +7,7 @@ set(xqt "${CMAKE_CURRENT_SOURCE_DIR}/../../xqtools")
 include("${xqt}/buildsys/ccmake.cmake")
 set(PROJECT_NAME eye)
 
-option(G4_LIDAR "use G4 lidar" OFF)
+option(G4_LIDAR "use G4 lidar" ON)
 
 set (NEED_BOOST  program_options date_time system filesystem thread chrono log iostreams)
 commonStart()
@@ -21,7 +21,7 @@ include_directories(
   ${PROJECT_SOURCE_DIR}/src
 )
 
-addSourceFiles("main" "." main  eth_client lidar eye)
+addSourceFiles("main" "." main  eth_client lidar eye kbd)
 addSourceFiles("core" "${xqt}/core/src" rbuf xmroundbuf xmutils xstdef xmatrixplatform)
 addSourceFiles("matrix" "${xqt}/matrix/src" xmatrix_imp xmatrix2 xmfilter)
 addSourceFiles("message" "${xqt}/message/src" xmessage xparser xq_parser datafileloader xqdatatxtfile xmessagepack xmessagesend)

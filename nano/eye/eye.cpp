@@ -19,16 +19,19 @@ void Eye::slFrontObstacle(float distance) {
 	MFrontObstacle m;
 	m.distance = distance;
 	sendMsg(&m);
-	if (sfCounter % 1 == 0) {
-		xmprintf(6, "distance = %.3f\n", distance);
+	if (sfCounter % 2 == 0) {
+		xmprintf(7, "distance = %.3f\n", distance);
 	}
-
 
 	sfCounter += 1;
 }
+
+/// from eth thread
 void Eye::ethData(char* s, int size) {
 
 }
+
+/// from eth thread
 void Eye::ethPing(unsigned char, unsigned int) {
 
 }

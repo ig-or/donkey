@@ -255,6 +255,7 @@ int EthClient::do_write(const unsigned char* buf, int size) {
 	smBufIndex += u;
 	xmprintf(9, "\tEthClient::do_write()  smBufIndex = %d;   canceling  heartbeat_timer_\n", smBufIndex);
 	boost::asio::post(io_context,   [this]()   {   heartbeat_timer_.cancel();   });
+	return 0;
 }
 
 int EthClient::do_write(const char* s) {
@@ -615,7 +616,12 @@ void EthClient::StopClient() {
     heartbeat_timer_.cancel();
 
 	io_context.post([this]() { 
+		try {
+		socket_.shutdown(boost::asio::socket_base::shutdown_both);
 		socket_.close(); 
+		} catch (const std::exception& ex) {
+			//  actually socket_ is bad already
+		}
 	});
 	socket_.close(ignored_error);
 }	

@@ -17,6 +17,7 @@
 
 class EthConsumer {
 	public:
+	/// incoming eth data; called from eth thread
 	virtual void ethData(char* s, int size) {}
 	virtual void ethPing(unsigned char, unsigned int) {}
 

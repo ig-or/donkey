@@ -1,13 +1,14 @@
 #include "g4.h"
 
+#include <cstdio>
 #include "src/CYdLidar.h"
 #include <core/base/timer.h>
 #include <core/common/ydlidar_help.h>
 
 int xmprintf(int q, const char * s, ...);
 
-CYdLidar laser;
-LaserScan scan;
+static CYdLidar laser;
+static LaserScan scan;
 
 bool G4Lidar::slStart() {
 	xmprintf(0, "starting g4 ..    ... \n");
@@ -102,32 +103,51 @@ bool G4Lidar::slStart() {
 }
 
 bool G4Lidar::slStop() {
+	xmprintf(8, "G4Lidar::slStop() starting .. \n");
+	//return true;
 	if (lidarIsWorking) {
-		xmprintf(0, "stopping g4 .. \n");
-		laser.turnOff();
+		xmprintf(8, "stopping g4 .. \n");
+		bool test = laser.turnOff();
+		if (!test) {
+			xmprintf(0, "G4Lidar::slStop() can not stop the motor \n");
+		}
 		laser.disconnecting();
 		lidarIsWorking = false;
-		xmprintf(0, " .. g4 stopped\n");
+		xmprintf(8, " .. g4 stopped\n");
+	} else {
+		xmprintf(8, "G4Lidar::slStop() lidarIsWorking false \n");	
 	}
+	xmprintf(8, "G4Lidar::slStop() finished \n");
 	return true;
 }
+
 G4Lidar::~G4Lidar() {
+	xmprintf(8, "G4Lidar::~G4Lidar() starting\n");
 	if (points != 0) {
 		delete[] points;
 		points = 0;
 		pointsSize = 0;
 	}
-	xmprintf(6, "G4Lidar::~G4Lidar()\n");
+	xmprintf(8, "G4Lidar::~G4Lidar() completed\n");
 }
 
 bool G4Lidar::getScan(SLPoint*& p, int& n) {
+	//printf("!");
 	if (!ydlidar::os_isOk()) {
 		return false;
 	}
-	bool result = laser.doProcessSimple(scan);
-	if (!result) {
+	
+	//putchar('&');
+	if (pleaseStop) {
 		return false;
 	}
+	bool result = laser.doProcessSimple(scan);  // call to YD sdk
+	if (!result) {								// no new info ?
+		
+		//putchar('%');
+		return false;
+	}
+	//putchar('*');
 	// adjust points array
 	int np = scan.points.size();
 	if (points == 0) {

@@ -3,7 +3,9 @@
 #include "g4.h"
 #endif
 #include "xmfilter.h"
-
+#include <chrono>
+#include <thread>
+#include <cstdio>
 #include "lidar.h"
 
 int xmprintf(int q, const char * s, ...);
@@ -61,13 +63,20 @@ bool  SLidar::startLidar() {
 	return true;
 }
 
-bool SLidar::stopLidar() {
+bool SLidar:: stopLidar() {
+	pleaseStop = true;
+	using namespace std::chrono_literals;
 	xmprintf(8, "SLidar::stopLidar() starting \n");
 	if (!st.joinable()) { //  already stopped?
+		xmprintf(8, "SLidar::stopLidar() finished already?\n");
 		return false;
 	}
-	pleaseStop = true;
+	
+	
+	//bool test = slStop();
+	xmprintf(8, "SLidar::stopLidar() waiting for lidar thread to finish .... \n");
 	st.join();
+	//std::this_thread::sleep_for(1250ms);
 	xmprintf(8, "SLidar::stopLidar() finished \n");
 	return true;
 }
@@ -93,14 +102,14 @@ double SLidar::updateFrontDistance(double d) {
 }
 
 void SLidar::slRun() {
-	xmprintf(5, "SLidar::slRun() is starting \n");
+	xmprintf(8, "SLidar::slRun() is starting \n");
 	int i;
 	bool test = slStart();
 	if (!test) {
 		xmprintf(5, "ERROR: SLidar::slRun(): cannot start the lidar; \n");
 		return;
 	}
-	adjustCalibration(calibration);
+	adjustCalibration(calibration);	// call to the child class
 
 	// prepare frontDistances
 	frontDistances.clear();
@@ -113,8 +122,10 @@ void SLidar::slRun() {
 	while (!pleaseStop) {
 		std::this_thread::yield();
 		//continue;
+		//putchar('?');
 		test = getScan(p, np);
-		if (!test) {
+		//putchar('@');
+		if (!test) {		//  no new info ?
 			continue;
 		}
 		//xmprintf(12, "SLidar::slRun() got %d points   \n", np);
@@ -127,12 +138,11 @@ void SLidar::slRun() {
 		lc.slFrontObstacle(d1);
 
 		rCounter += 1;
+		//printf(".");
 	}
-	xmprintf(5, "SLidar::slRun()    stopping the lidar \n");
+	xmprintf(8, "SLidar::slRun()    stopping the lidar hardware\n");
 	test = slStop();
-
-
-	xmprintf(5, "SLidar::slRun() finished \n");
+	xmprintf(8, "SLidar::slRun() finished \n");
 }
 
 void SimpleLC::slScan(SLPoint* p, int n){
@@ -154,7 +164,7 @@ void SimpleLC::slScan(SLPoint* p, int n){
 }
 void SimpleLC::slFrontObstacle(float distance) {
 	if (counter % 5 == 0) {
-		xmprintf(6, "slFrontObstacle %.3f;\n", distance);
+		xmprintf(8, "slFrontObstacle %.3f;\n", distance);
 	}
 	counter += 1;
 }

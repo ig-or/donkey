@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <chrono>
 #include <thread>
+#include <atomic>
 #include <iostream>
 
 #include <signal.h>
@@ -15,6 +16,7 @@
 #include "lidar.h"
 #include <xmroundbuf.h>
 #include "xmessagesend.h"
+#include "kbd.h"
 #include "xmessage.h"
 #ifdef G4LIDAR
 #include "g4.h"
@@ -30,7 +32,9 @@ static std::mutex msgSendMutex;
 std::chrono::time_point<std::chrono::steady_clock> pingTime;
 int xmprintf(int q, const char * s, ...);
 std::chrono::time_point<std::chrono::steady_clock> eStartTime;
+std::atomic<bool> timeToExit = false;
 
+void makeExit();
 struct PingInfo {
 	unsigned char id;
 	unsigned int teensyTime;
@@ -57,21 +61,34 @@ void ping(unsigned char id, unsigned int time) {
 
 void exitHandler(int s){
 	xmprintf(0, "exitHandler() Caught signal %d\n",s);
-	std::lock_guard<std::mutex> lk(msgSendMutex); 
-	e.stopEye();
+	timeToExit = true;
+}
+
+void kbdHandler(char c) {
+	if (c == 'q') {
+		timeToExit = true;
+	}
+}
+
+// stop all threads exept tcp thread
+void makeExit() {
 	if (lidar) {
 		bool result = lidar->stopLidar();
-		xmprintf(6, "exitHandler() lidar stopped: %s \n", result ? "yes" : "no");
+		xmprintf(6, "makeExit() lidar stopped: %s \n", result ? "yes" : "no");
 		delete lidar; lidar = 0;
 	}
+	
+	std::lock_guard<std::mutex> lk(msgSendMutex); 
+	e.stopEye();
 	if (cli) {
+		xmprintf(6, "makeExit(): stopping tcp client\n");
 		cli->StopClient();
-		xmprintf(6, "exitHandler():  tcp client stopped \n");
+		xmprintf(6, "makeExit():  tcp client stopped \n");
 		delete cli; cli = 0;
 	}
-	
-	xmprintf(6, "exitHandler() filished\n");
-	exit(0); 
+	kbdStop();
+	xmprintf(6, "makeExit() filished\n");
+	//exit(0); 
 }
 
 int main(int argc, char *argv[]) {
@@ -89,15 +106,21 @@ int main(int argc, char *argv[]) {
 	sigIntHandler.sa_flags = 0;
 	sigaction(SIGINT, &sigIntHandler, NULL);
  
+	//  start the keyboard
+ 	kbdSetup(kbdHandler);
+	kbdStart();
+
+	// start ethernet to the teensy
 	cli = new EthClient(e);
 	std::thread tcp([&] { cli->startClient(); } );
 	
+	// start lidar
 	#ifdef G4LIDAR
 		lidar = new G4Lidar(e);
 	#else
 		lidar = new SLidar(e);  //this will do nothing
 	#endif
-	e.setEthClient(cli);
+	e.setEthClient(cli);				//  looks like this is not used now
 	result = lidar->startLidar();
 
 	std::this_thread::sleep_for(200ms);
@@ -109,10 +132,14 @@ int main(int argc, char *argv[]) {
 	//tcp.join();
 	//xmprintf(0, "tcp thread finished \r\n");
 	
-	while(1) {
-		std::this_thread::sleep_for(200ms);
-	}
+	while(!timeToExit) {
+		std::this_thread::sleep_for(100ms);
 
+	}
+	makeExit();
+	if (tcp.joinable()) {
+		tcp.join();
+	}
 	xmprintf(0, "eye stop\r\n");
 	return 0;
 }
@@ -211,6 +238,14 @@ int xmprintf(int q, const char * s, ...) {
 	}
 
 	int eos = strlen(sbuf);
+	if ((eos < sbSize - 3) && (eos > 1) && (sbuf[eos-1] == '\n')) {
+		if (sbuf[eos - 2] != '\r') {
+			sbuf[eos - 1] = '\r';
+			sbuf[eos] = '\n';
+			sbuf[eos + 1] = 0;
+		}
+	}
+
 	sbuf[sbSize - 1] = 0;
 
 	if (q <= currentLogLevel) {
