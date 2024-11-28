@@ -26,7 +26,7 @@
 static EthClient* cli = 0;
 static SLidar* lidar = 0;
 static Eye e;
-static int currentLogLevel = 10; // 7
+static int currentLogLevel = 6; // 7
 static std::mutex msgSendMutex;
 
 std::chrono::time_point<std::chrono::steady_clock> pingTime;
@@ -45,8 +45,7 @@ XMRoundBuf<PingInfo, 10> pingInfo;
 
 void teeData(char* s, int size) {
 	s[size] = 0;
-	//xmprintf(0, "\n teeData {%s} \n", s);
-	xmprintf(0, "%s", s);
+	xmprintf(0, "[%s]", s);
 }
 
 void ping(unsigned char id, unsigned int time) {
@@ -125,20 +124,19 @@ int main(int argc, char *argv[]) {
 
 	std::this_thread::sleep_for(200ms);
 	e.startEye();
-	
 
-	//xmprintf(0, "stopping tcp .. \r\n");
-	//cli->StopClient();
-	//tcp.join();
-	//xmprintf(0, "tcp thread finished \r\n");
-	
 	while(!timeToExit) {
 		std::this_thread::sleep_for(100ms);
 
 	}
+
 	makeExit();
 	if (tcp.joinable()) {
+		xmprintf(5, "waiting for tcp thread to stop .. \r\n");
 		tcp.join();
+		xmprintf(5, "tcp thread completed \r\n");
+	} else {
+		xmprintf(6, "tcp thread stopped already \r\n");
 	}
 	xmprintf(0, "eye stop\r\n");
 	return 0;
@@ -238,6 +236,7 @@ int xmprintf(int q, const char * s, ...) {
 	}
 
 	int eos = strlen(sbuf);
+	/*
 	if ((eos < sbSize - 3) && (eos > 1) && (sbuf[eos-1] == '\n')) {
 		if (sbuf[eos - 2] != '\r') {
 			sbuf[eos - 1] = '\r';
@@ -245,7 +244,7 @@ int xmprintf(int q, const char * s, ...) {
 			sbuf[eos + 1] = 0;
 		}
 	}
-
+*/
 	sbuf[sbSize - 1] = 0;
 
 	if (q <= currentLogLevel) {

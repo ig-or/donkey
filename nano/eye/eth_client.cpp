@@ -131,9 +131,9 @@ void EthClient::check_deadline() {
 	if (deadline_.expiry() <= steady_timer::clock_type::now()) 	{
 		// The deadline has passed. The socket is closed so that any outstanding
 		// asynchronous operations are cancelled.
-		xmprintf(9, "\tcheck_deadline(); The deadline has passed. closing the socket\n");
+		xmprintf(8, "\tcheck_deadline(); The deadline has passed. closing the socket\n");
 		if (eState == esConnected) {
-			xmprintf(4, "EthClient::check_deadline() disconnected fron teensy (ping timeout) \n");
+			xmprintf(4, "EthClient::check_deadline() disconnected from teensy (ping timeout) \n");
 		}
 		socket_.close();
 
@@ -154,11 +154,11 @@ void EthClient::check_deadline() {
 bool EthClient::checkThePacket(char* buf, int& len) {
 	using namespace std::chrono_literals;
 	if (len < ethHeaderSize) { //  too small packet
-		xmprintf(0, "checkThePacket: len= %d; packetsCounter = %d\r\n", len, packetsCounter);
+		xmprintf(1, "checkThePacket: len= %d; packetsCounter = %d\r\n", len, packetsCounter);
 		return false;
 	}
 	if (strncmp(buf, "TBWF", 4) != 0) { // wrong header
-		xmprintf(0, "checkThePacket: no header  len = %d;  packetsCounter = %u; buf= {%s}\r\n", len, packetsCounter, buf);
+		xmprintf(1, "checkThePacket: no header  len = %d;  packetsCounter = %u; buf= {%s}\r\n", len, packetsCounter, buf);
 		std::this_thread::sleep_for(2ms);
 		int bs;
 		while ((bs = socket_.available()) > 0) {
@@ -198,7 +198,7 @@ bool EthClient::checkThePacket(char* buf, int& len) {
 
 		if (len >= (incomingPacketSize +ethHeaderSize)) {
 		} else {
-			xmprintf(0, "checkThePacket: incomingPacketSize = %d; (len - ethHeaderSize) = %d; packetsCounter = %d; incomingPacketsCounter=%d\r\n", 
+			xmprintf(1, "checkThePacket: incomingPacketSize = %d; (len - ethHeaderSize) = %d; packetsCounter = %d; incomingPacketsCounter=%d\r\n", 
 				incomingPacketSize, (len - ethHeaderSize), packetsCounter, incomingPacketsCounter);
 			
 			return false;
@@ -217,7 +217,7 @@ bool EthClient::checkThePacket(char* buf, int& len) {
 		return false; 
 	}
 	if (packetsCounter != incomingPacketsCounter) {
-		xmprintf(0, "checkThePacket: packetsCounter = %u, incomingPacketsCounter = %u \r\n", packetsCounter, incomingPacketsCounter);
+		xmprintf(1, "checkThePacket: packetsCounter = %u, incomingPacketsCounter = %u \r\n", packetsCounter, incomingPacketsCounter);
 		if (packetsCounter < incomingPacketsCounter) {
 			packetsCounter = incomingPacketsCounter;
 		}
@@ -266,7 +266,7 @@ int EthClient::do_write(const char* s) {
 	if (n == 0) {
 		return 0;
 	}
-	//xmprintf(0, "do_write  writing %d bytes\r\n", n);
+	//xmprintf(8, "do_write  writing %d bytes\r\n", n);
 
 	if (strncmp(s, "get ", 4) == 0) { //  log file handling
 		readingTheLogFile = 1;
@@ -291,7 +291,7 @@ int EthClient::do_write(const char* s) {
 
 void EthClient::makeReconnect() {
 		socket_.close();
-		xmprintf(4, "\t(re)connecting to teensy.... \n");
+		xmprintf(8, "\t(re)connecting to teensy.... \n");
 		tcp::endpoint ep(boost::asio::ip::address::from_string("192.168.0.177"), 8889);
 		deadline_.cancel();
 		heartbeat_timer_.cancel();
@@ -367,7 +367,7 @@ void EthClient::process(boost::system::error_code ec, std::size_t len) {
 
 void EthClient::readingTheFile(char* buf, int len) {
 	using namespace std::chrono_literals;
-	//xmprintf(0, "reading len = %d; (%d) \r\n", len, readingTheLogFile);
+	//xmprintf(8, "reading len = %d; (%d) \r\n", len, readingTheLogFile);
 	const char* sch;
 	switch (readingTheLogFile) {
 		case 1:
@@ -377,7 +377,7 @@ void EthClient::readingTheFile(char* buf, int len) {
 				fileSize = 0;
 				int k = sscanf(sch + 4, "%d", &fileSize);
 				if (k == 1) {
-					xmprintf(0, "\t got ack; fileSize = %u \n", fileSize); // << fileSize << std::endl;
+					xmprintf(5, "\t got ack; fileSize = %u \n", fileSize); // << fileSize << std::endl;
 					theFile = fopen(currentFileName.c_str(), "wb"); //  TODO: do this BEFORE sending the request to the TEENSY
 					if (theFile == 0) {
 						readingTheLogFile = 0;
@@ -395,7 +395,7 @@ void EthClient::readingTheFile(char* buf, int len) {
 						memcpy(buf, "TBWF", 4);// memcpy(buf + 8, &packetsCounter, 4);
 						int ret = socket_.write_some(boost::asio::buffer(buf, ethHeaderSize), error);
 
-						xmprintf(0, "file %s  opened; ret = %d\r\n", currentFileName.c_str(), ret);
+						xmprintf(5, "file %s  opened; ret = %d\r\n", currentFileName.c_str(), ret);
 						//ret = socket.write_some(boost::asio::buffer(buf, ethHeaderSize), error);
 						//ret = socket.write_some(boost::asio::buffer(buf, ethHeaderSize), error);
 					}
@@ -418,7 +418,7 @@ void EthClient::readingTheFile(char* buf, int len) {
 			if (checkThePacket(buf, len)) {
 
 				if (incomingPacketsCounter < packetsCounter) { //  looks like we got this already
-					xmprintf(0, "skipping the incoming packet #%u; packetsCounter=%u \r\n",
+					xmprintf(1, "skipping the incoming packet #%u; packetsCounter=%u \r\n",
 						incomingPacketsCounter, packetsCounter);
 					counterErrorCounter += packetsCounter - incomingPacketsCounter;
 
@@ -431,14 +431,14 @@ void EthClient::readingTheFile(char* buf, int len) {
 				fwrite(buf + ethHeaderSize, 1, sizeToSave, theFile);
 				fileBytesCounter += sizeToSave;
 
-				//xmprintf(0, "fwrite incomingPacketsCounter=%d; packetsCounter=%d; len=%d; total=%lld; size=%d\r\n", 
+				//xmprintf(1, "fwrite incomingPacketsCounter=%d; packetsCounter=%d; len=%d; total=%lld; size=%d\r\n", 
 				//	incomingPacketsCounter, packetsCounter, len - ethHeaderSize, fileBytesCounter, incomingPacketSize);
 					
 				{
 					int p = fileBytesCounter * 100 / fileSize;
 					if ((p != lastReportedProgress) && ((p % 10) == 0)) {
 						lastReportedProgress = p;
-						xmprintf(0, "%%%d\r\n", lastReportedProgress);
+						xmprintf(1, "%%%d\r\n", lastReportedProgress);
 					}
 				}
 
@@ -457,7 +457,7 @@ void EthClient::readingTheFile(char* buf, int len) {
 					ret = socket_.write_some(boost::asio::buffer(buf, ethHeaderSize), error);
 
 
-					xmprintf(0, "reading the file finished; fileBytesCounter = %d; fileSize =  %d; incomingPacketsCounter =  %d; packetsCounter =  %d; \
+					xmprintf(1, "reading the file finished; fileBytesCounter = %d; fileSize =  %d; incomingPacketsCounter =  %d; packetsCounter =  %d; \
 							badPacketCounter =  %d; counterErrorCounter =  %d\r\n",
 						fileBytesCounter, fileSize, incomingPacketsCounter, packetsCounter,
 						badPacketCounter, counterErrorCounter);
@@ -484,11 +484,11 @@ void EthClient::readingTheFile(char* buf, int len) {
 			} else {
 				// ?
 				if (memcmp(buf, "TEEE", 4) == 0) {
-					xmprintf(0, "EOT detected; \r\n");
+					xmprintf(1, "EOT detected; \r\n");
 
 					fclose(theFile);
 					theFile = 0;
-					xmprintf(0, "reading the file finished; fileBytesCounter = %d; fileSize =  %d; incomingPacketsCounter =  %d; packetsCounter =  %d; badPacketCounter =  %d; counterErrorCounter =  %d\r\n",
+					xmprintf(1, "reading the file finished; fileBytesCounter = %d; fileSize =  %d; incomingPacketsCounter =  %d; packetsCounter =  %d; badPacketCounter =  %d; counterErrorCounter =  %d\r\n",
 						fileBytesCounter, fileSize, incomingPacketsCounter, packetsCounter,
 						badPacketCounter, counterErrorCounter);
 
@@ -500,7 +500,7 @@ void EthClient::readingTheFile(char* buf, int len) {
 				while ((bs = socket_.available()) > 0) {
 					bs = (bs < bufSize) ? bs : bufSize;
 					bs = socket_.read_some(boost::asio::buffer(buf, bs), error);
-					xmprintf(0, "got %d bytes (nak) \r\n", bs);
+					xmprintf(1, "got %d bytes (nak) \r\n", bs);
 				}
 
 				//  send the NAK:
@@ -613,15 +613,18 @@ void EthClient::StopClient() {
 
     boost::system::error_code ignored_error;
     deadline_.cancel();
+	//deadline_.
     heartbeat_timer_.cancel();
 
 	io_context.post([this]() { 
 		try {
-		socket_.shutdown(boost::asio::socket_base::shutdown_both);
-		socket_.close(); 
+			//socket_.shutdown(boost::asio::socket_base::shutdown_both);
+			boost::system::error_code ignored_error;
+			socket_.close(ignored_error); 
 		} catch (const std::exception& ex) {
 			//  actually socket_ is bad already
 		}
 	});
 	socket_.close(ignored_error);
+	io_context.stop();
 }	

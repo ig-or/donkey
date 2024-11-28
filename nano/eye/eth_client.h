@@ -5,6 +5,7 @@
 #include "boost/asio.hpp"
 #include <mutex>
 #include <deque>
+#include <atomic>
 #include <condition_variable>
 //#include <chrono>
 
@@ -65,7 +66,7 @@ enum EState {
 	void readingTheFile(char* buf, int len);
 	// -----------------------------------------------------------------
 
-	volatile bool pleaseStop = false;
+	std::atomic<bool> pleaseStop = false;
 	
 	boost::asio::io_context io_context;	
 	boost::asio::ip::tcp::socket socket_;

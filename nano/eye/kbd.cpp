@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <functional>
 #include <atomic>
+#include <chrono>
 #include <thread>
 
 std::function<void(char)> f_c = nullptr;
@@ -30,7 +31,7 @@ void enableRawMode() {
 
   struct termios raw = orig_termios;
   raw.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
-  raw.c_oflag &= ~(OPOST);
+  //raw.c_oflag &= ~(OPOST);
   raw.c_cflag |= (CS8);
   raw.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
   raw.c_cc[VMIN] = 0;
@@ -57,16 +58,18 @@ void kbdStop() {
 		return;
 	}
 	kbdThread.join();
-    xmprintf(0, "kbd thread finished\n");
+    xmprintf(8, "kbd thread finished\n");
 	return;
 }
 
 void kbdtest() {
     enableRawMode();
     size_t ok;
+    using namespace std::chrono_literals;
     char c;
     while (!pstop) {
-        std::this_thread::yield();
+        //std::this_thread::yield();
+        std::this_thread::sleep_for(50ms);
         c = '\0';
         ok = read(STDIN_FILENO, &c, 1);
         if (ok == 0) {

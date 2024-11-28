@@ -11,7 +11,7 @@ static CYdLidar laser;
 static LaserScan scan;
 
 bool G4Lidar::slStart() {
-	xmprintf(0, "starting g4 ..    ... \n");
+	xmprintf(5, "starting g4 ..    ... \n");
 	///lidar port
 	std::string str_optvalue("/dev/ttyUSB0");
 	laser.setlidaropt(LidarPropSerialPort, str_optvalue.c_str(), str_optvalue.size());
@@ -89,7 +89,7 @@ bool G4Lidar::slStart() {
 	if (ret) {
 		ret = laser.turnOn();
 		if (ret) {
-			xmprintf(0, "g4 started\n");
+			xmprintf(5, "g4 started\n");
 		} else {
 			xmprintf(0, "cannot start g4 \n");
 			return false;
