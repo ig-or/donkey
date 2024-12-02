@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <atomic>
 #include "usb_serial.h"
 #include <stdarg.h>
 #include "SdFat.h"
@@ -106,7 +107,11 @@ void printfToEth(bool x) {
 	enableEthOutput = x;
 }
 
+static std::atomic<char> printingNow = 0;
+
 int xmprintf(int dst, const char* s, ...) {
+	if (printingNow != 0) return;
+	printingNow = 1;
 	va_list args;
 	va_start(args, s);
 	int ok;
@@ -133,9 +138,11 @@ writeHere:
 	int eos = strlen(sbuf);
 
 	if (eos < 1) {
+		printingNow = 0;
 		return 0;
 	}
 	if (eos > (sbSize - 3)) {
+		printingNow = 0;
 		return 0;
 	}
 	//   this '\r' things below is for minicom terminal software
@@ -157,6 +164,7 @@ writeHere:
 	
 	sprintCounter++;
 
+	printingNow = 0;
 	return 0;
 }
 

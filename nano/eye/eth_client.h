@@ -18,6 +18,9 @@
 
 class EthConsumer {
 	public:
+	
+	virtual void onConnect(bool connected) {}
+
 	/// incoming eth data; called from eth thread
 	virtual void ethData(char* s, int size) {}
 	virtual void ethPing(unsigned char, unsigned int) {}
@@ -36,7 +39,7 @@ public:
 	 * \return true if OK
 	*/
 	bool startClient(); // , int msTimeout)
-	void StopClient();
+	void stopClient();
 	/**
 	 * \return 
 	*/
@@ -84,8 +87,8 @@ enum EState {
 	void process(boost::system::error_code ec, std::size_t len);
 	EthConsumer& consumer;
 
-	std::mutex mu, muOutbox;
-	std::condition_variable cv;
+	std::mutex muOutbox;  // mu, 
+	//std::condition_variable cv;
 	boost::asio::steady_timer deadline_;
 	boost::asio::steady_timer heartbeat_timer_;
 	std::deque<std::string> outbox_;				///  messages to write

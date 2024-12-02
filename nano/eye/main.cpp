@@ -11,6 +11,7 @@
 #include <signal.h>
 #include <unistd.h>
 #include <stdarg.h>
+#include <boost/program_options.hpp>
 
 #include "eth_client.h"
 #include "lidar.h"
@@ -33,6 +34,7 @@ std::chrono::time_point<std::chrono::steady_clock> pingTime;
 int xmprintf(int q, const char * s, ...);
 std::chrono::time_point<std::chrono::steady_clock> eStartTime;
 std::atomic<bool> timeToExit = false;
+static bool useLidar = true;
 
 void makeExit();
 struct PingInfo {
@@ -63,34 +65,78 @@ void exitHandler(int s){
 	timeToExit = true;
 }
 
-void kbdHandler(char c) {
-	if (c == 'q') {
+void kbdHandlerC(KbdCode c) {
+	if (c == kbdExit) {
 		timeToExit = true;
 	}
 }
 
+void kbdHandlerS(char* s) {
+	e.onString(s);
+}
+
 // stop all threads exept tcp thread
 void makeExit() {
-	if (lidar) {
+	if (useLidar && lidar) {
 		bool result = lidar->stopLidar();
 		xmprintf(6, "makeExit() lidar stopped: %s \n", result ? "yes" : "no");
-		delete lidar; lidar = 0;
+		//delete lidar; lidar = 0;
 	}
 	
 	std::lock_guard<std::mutex> lk(msgSendMutex); 
 	e.stopEye();
 	if (cli) {
 		xmprintf(6, "makeExit(): stopping tcp client\n");
-		cli->StopClient();
+		cli->stopClient();
 		xmprintf(6, "makeExit():  tcp client stopped \n");
-		delete cli; cli = 0;
+		//delete cli; cli = 0;
 	}
 	kbdStop();
-	xmprintf(6, "makeExit() filished\n");
+	xmprintf(6, "makeExit() finished\n");
 	//exit(0); 
 }
 
 int main(int argc, char *argv[]) {
+	std::cout <<  "    : " << 	"  starting eye module ....  "  <<  std::endl; 
+	boost::program_options::variables_map vm;
+	
+	std::string d("arguments");
+	boost::program_options::options_description desc;
+	desc.add_options()
+		("help", "This help message")		
+		("nl", "do not use lidar")
+	;
+	//using namespace std::filesystem;
+	try
+	{
+		boost::program_options::store(boost::program_options::parse_command_line(argc, argv, desc, 
+			boost::program_options::command_line_style::unix_style ^
+			boost::program_options::command_line_style::allow_short
+			), vm);
+
+		//boost::program_options::store(boost::program_options::parse_command_line(argc, argv, desc), vm);
+		boost::program_options::notify(vm);
+	}
+	catch(...) 	{
+		std::cerr << "   : error: bad arguments" <<  std::endl << desc << std::endl << std::endl;
+		std::cerr << "argc = " << argc << "; argv: ";
+		for (int i = 0; i < argc; i++) {
+			std::cerr << " " << argv[i] << ";";
+		}
+		std::cerr << std::endl;
+		return 1;
+	}
+
+	if( vm.count("help") ) {
+		std::cout<< " (help)  " << desc << std::endl;
+		return 1;
+	}
+
+	if(vm.count("nl"))  {
+		useLidar = false;
+		xmprintf(2, "not using LIDAR \n");
+	}
+
 	using namespace std::chrono_literals;
 	bool result;
 	eStartTime = std::chrono::steady_clock::now();
@@ -106,7 +152,7 @@ int main(int argc, char *argv[]) {
 	sigaction(SIGINT, &sigIntHandler, NULL);
  
 	//  start the keyboard
- 	kbdSetup(kbdHandler);
+ 	kbdSetup(kbdHandlerC, kbdHandlerS);
 	kbdStart();
 
 	// start ethernet to the teensy
@@ -114,14 +160,17 @@ int main(int argc, char *argv[]) {
 	std::thread tcp([&] { cli->startClient(); } );
 	
 	// start lidar
-	#ifdef G4LIDAR
-		lidar = new G4Lidar(e);
-	#else
-		lidar = new SLidar(e);  //this will do nothing
-	#endif
-	e.setEthClient(cli);				//  looks like this is not used now
-	result = lidar->startLidar();
+	if (useLidar) {
+		#ifdef G4LIDAR
+			lidar = new G4Lidar(e);
+		#else
+			lidar = new SLidar(e);  //this will do nothing
+		#endif
+					
+		result = lidar->startLidar();
+	}
 
+	e.setEthClient(cli);	
 	std::this_thread::sleep_for(200ms);
 	e.startEye();
 

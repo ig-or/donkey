@@ -11,6 +11,7 @@ public:
 	void setEthClient(EthClient* eth_) {eth = eth_; }
 	void startEye();
 	void stopEye();
+	void onString(char* s);
 private:
 	EthClient* eth = 0;
 	bool pleaseStop = false;

@@ -1,6 +1,13 @@
 
 #pragma once
 
+#include "xmfilter.h"
+
+enum ChCalibrationMethod {
+	rcNoCalibration,
+	rcCalibrationOnlyZero,
+	rcFullCalibration
+};
 /**
  * state of the calibration status for receiver channel.
 */
@@ -17,24 +24,66 @@ enum CalibrationState {
 	rcComplete				//  calibrated
 };
 
+enum RcvChannelState {
+	chUnknown,
+	chCalibration,
+	chYes,  //  working
+	chNo	// not working
+};
+
+struct RCCalibrationInfo {
+	int center = 0;
+	int minimum = 0;
+	int maximum = 0;
+	void rciReset() { center = 0; minimum = 0; maximum = 0; }
+};
+
+struct RCHCalibration {
+	ChCalibrationMethod cMethod = rcCalibrationOnlyZero;
+	unsigned int calibrationStartTimeMs = 0;
+	unsigned int calibrationStateTimeMs = 0;
+	unsigned int calibrationDataTimeMs = 0;
+	int calibrationDataCounter = 0;
+	CalibrationState cState = rcNo;
+	RCCalibrationInfo rccInfo;
+	XCov1 xcov;
+	void startReceiverChannelCalibration(unsigned int now);
+	void calibrationFailed();
+	void zeroCalibrationComplete();
+};
+
+struct RcvInfo {
+	long wch = 0;						/// copy of the ReceiverChannel
+	long cch = 0;						/// copy of the ReceiverChannel
+	unsigned int cchTime = 0;			/// copy of the ReceiverChannel
+
+	int chID = 0;						/// > 0
+	int v = 0;							/// value scaled from 0 to 180
+	RcvChannelState chState = chUnknown;
+
+	unsigned int prevCchTime = 0;
+	RCHCalibration chCalibration;
+	int deadBand = 0;
+	int rangeMinMks = 0;
+	int rangeZeroMks = 0;
+	int rangeMaxMks = 0;
+
+	/// @brief update everything based on wch, cch and cchTime info.
+	void rchUpdate(unsigned int now);
+		/**
+	 * setup receiver changing range 
+	*/
+	void setupRange(int minMks, int maxMks, int zeroMks);
+	/// @brief   print out receiver statistics
+	void rcvPrint();					
+	void processCalibration(unsigned int now);
+};
+
 /**
  *  some useful iinfo about receiver states.
 */
 
 const int rcc = 2; ///< receiver channel count
-/*
-enum ReceiverUpdateFlag {
-	receiverFlagOK,					//  normal operation
-	receiverFlagControlStarted,		//  the transmitter started
-	receiverFlasControlStopped		//  the transmitter stopped
-};
-*/
-/**
- * callback function.
- * first parameter is the ReceiverUpdateFlag
- * second is the channel value
-*/
-//typedef void (*recvChangeT)(ReceiverUpdateFlag, int);
 
 /**
  * a receiver callback function.
@@ -45,16 +94,7 @@ typedef void (*recvChangeT)(int, unsigned int);
 
 void receiverSetup();
 void receiverPrint();
-
-void startReceiverCalibrate();
+void rcvProcess(unsigned int now);   //    call it from 255 level interrupt
 
 void receiverProcessCalibration(unsigned int now);
-//unsigned long rcv_ch1();
-//unsigned long rcv_ch2();
 
-/**
- * setup a function which will be called when receiver value will change
- * \param f the callback function
- * \param chNum channel number (1 or 2)
-*/
-void setReceiverUpdateCallback(recvChangeT f, int chNum = 1);

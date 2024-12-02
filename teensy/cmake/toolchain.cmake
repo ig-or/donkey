@@ -29,6 +29,11 @@ else()
 	message(STATUS "no COMPILERPATH.. all the build tools supposed to be in PATH then ? gcc_path = ${gcc_path}")
 endif()
 
+if (NOT "${lib2}" STREQUAL "")
+	link_directories(${lib2})
+	message(STATUS lib2 = ${lib2})
+endif()
+
 set(esfx)  # need a file extension for Windows
 if (WIN32)
 set(esfx .exe)

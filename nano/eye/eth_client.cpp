@@ -64,10 +64,10 @@ bool EthClient::startClient(){ // , int msTimeout
 		io_context.run();
 		
 	} catch (std::exception& e) {
-		xmprintf(1, "ERROR: cannot connect to tennsy; exeption: %s  \r\n", e.what());
+		xmprintf(1, "ERROR: EthClient::startClient() exeption: %s  \r\n", e.what());
 		return false;
 	}
-	xmprintf(6, "EthClient::startClient() finished (io_context.run() exited)\n");
+	xmprintf(4, "EthClient::startClient() finished (io_context.run() exited)\n");
 	return true;
 }
 
@@ -110,7 +110,7 @@ void EthClient::handle_connect(const boost::system::error_code& error,  const bo
 		heartbeat_timer_.async_wait(std::bind(&EthClient::start_connect, this, ep));
 		deadline_.expires_at(steady_timer::time_point::max());  // start_connect will reset it soon
     } else {    // Otherwise we have successfully established a connection.
-		xmprintf(7, "\tEthClient::handle_connect()   Connected to %s \n", ep.address().to_string().c_str());
+		xmprintf(3, "\tEthClient::handle_connect()   Connected to %s \n", ep.address().to_string().c_str());
 		eState = esConnected;
 		outbox_.clear();
 		do_read();// Start the input actor.
@@ -266,7 +266,7 @@ int EthClient::do_write(const char* s) {
 	if (n == 0) {
 		return 0;
 	}
-	//xmprintf(8, "do_write  writing %d bytes\r\n", n);
+	xmprintf(5, "do_write  writing %d bytes\r\n", n);
 
 	if (strncmp(s, "get ", 4) == 0) { //  log file handling
 		readingTheLogFile = 1;
@@ -279,13 +279,13 @@ int EthClient::do_write(const char* s) {
 		xmprintf(1, "do_write: reading file %s [%s] \r\n", currentFileName.c_str(), s);
 	}
 
-	std::lock_guard<std::mutex> lk(muOutbox);
-	outbox_.push_back(s);
-	boost::asio::post(io_context,   [this]()   {   heartbeat_timer_.cancel();   });
-	
+	//muOutbox.lock();
+		std::lock_guard<std::mutex> lk(muOutbox);
+		outbox_.push_back(s);
+		boost::asio::post(io_context,   [this]()   {   heartbeat_timer_.cancel();   });
+	//muOutbox.unlock();
 
 	//int ret = socket_.write_some(boost::asio::buffer(s, n), error); 
-
 	return 0;
 }
 
@@ -299,7 +299,7 @@ void EthClient::makeReconnect() {
 }
 
 void EthClient::process(boost::system::error_code ec, std::size_t len) {
-	xmprintf(9, "EthClient::process starting (eState = %d) \n", eState);
+	xmprintf(9, "EthClient::process() starting (eState = %d) \n", eState);
 	if (pleaseStop) {
 		return;
 	}
@@ -335,8 +335,8 @@ void EthClient::process(boost::system::error_code ec, std::size_t len) {
 	//}
 	if ((len >= 3) && (strncmp(buf, "tee", 3) == 0)) {   //   connection accepted
 		connectedToTeensy = true;
-		std::lock_guard<std::mutex> lk(mu);
-		cv.notify_all();
+		//std::lock_guard<std::mutex> lk(mu);
+		//cv.notify_all();
 		xmprintf(1, "tee! connection accepted by teensy\n");
 		
 	} else if ((len >= 9) && (strncmp(buf, "ping", 4) == 0)) { //  ping
@@ -348,7 +348,7 @@ void EthClient::process(boost::system::error_code ec, std::size_t len) {
 		//	ping1(id, time);
 		//}
 		consumer.ethPing(id, time);
-		xmprintf(9, "\t got ping[%u] from teensy\n", id);
+		xmprintf(8, "\t got ping[%u] from teensy\n", id);
 	} else if (readingTheLogFile != 0) {
 		assert(len < bufSize);
 		buf[bufSize-1] = 0;
@@ -533,7 +533,7 @@ void EthClient::do_read() {
 	deadline_.expires_after(std::chrono::milliseconds(850));
 	//socket.async_read_some(boost::asio::buffer(buf, bufSize - 2), 
 	xmprintf(9, "EthClient::do_read(); starting socket_.async_read_some   \n");
-	socket_.async_read_some(boost::asio::buffer(buf, 1024),
+	socket_.async_read_some(boost::asio::buffer(buf, bufSize),
 		[this](boost::system::error_code ec, std::size_t len) { process(ec, len);  });
 }
 
@@ -556,13 +556,13 @@ void EthClient::start_write()  {
 		boost::asio::async_write(socket_, boost::asio::buffer(s), std::bind(&EthClient::handle_write, this, _1));
 	} else {
 		if (smBufIndex != 0) {
-			xmprintf(9, "EthClient::start_write()  sending binary info, smBufIndex = %d \n", smBufIndex); 
+			xmprintf(4, "EthClient::start_write()  sending binary info, smBufIndex = %d \n", smBufIndex); 
 			boost::asio::async_write(socket_, boost::asio::buffer(smBuf, smBufIndex), std::bind(&EthClient::handle_write, this, _1));
 			smBufIndex = 0;
 		} else if (!outbox_.empty()) {
 			s = outbox_.front();
 			outbox_.pop_front();
-			xmprintf(9, "EthClient::start_write()  sending a string from outbox_\n");
+			xmprintf(4, "EthClient::start_write()  sending a string from outbox_  [%s]\r\n", s.c_str());
 			boost::asio::async_write(socket_, boost::asio::buffer(s), std::bind(&EthClient::handle_write, this, _1));
 		}
 	}
@@ -606,7 +606,7 @@ void EthClient::handle_write(const boost::system::error_code& error)   {
 	}
 }
 
-void EthClient::StopClient() {
+void EthClient::stopClient() {
 	pleaseStop = true;
 	//socket.close();
 	connectedToTeensy = false;
@@ -619,12 +619,15 @@ void EthClient::StopClient() {
 	io_context.post([this]() { 
 		try {
 			//socket_.shutdown(boost::asio::socket_base::shutdown_both);
+			deadline_.cancel();
+			heartbeat_timer_.cancel();
 			boost::system::error_code ignored_error;
 			socket_.close(ignored_error); 
+
 		} catch (const std::exception& ex) {
 			//  actually socket_ is bad already
 		}
 	});
-	socket_.close(ignored_error);
+	//socket_.close(ignored_error);
 	io_context.stop();
 }	

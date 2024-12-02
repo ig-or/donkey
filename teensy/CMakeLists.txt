@@ -6,7 +6,7 @@ cmake_minimum_required (VERSION 3.16)
 set(PROJECT_NAME donkey)
 PROJECT(${PROJECT_NAME})
 
-option(LOAD_VIA_ROBOT "load the file to the teensy module via jetson nano" ON)
+option(LOAD_VIA_ROBOT "load the file to the teensy module via jetson nano" OFF)
 
 set(PROJ_SRC_FILES  SL_${PROJECT_NAME})
 set(CMAKE_COLOR_MAKEFILE TRUE)
@@ -131,7 +131,6 @@ else()
 
 endif()
 
-
 if (LOAD_VIA_ROBOT )
 	add_custom_command(TARGET ${PROJECT_NAME}  POST_BUILD 
 		COMMAND scp   "${BUILD_DIR}/${PROJECT_NAME}.hex" test@robot:/home/test/prog/donkey 
@@ -142,11 +141,14 @@ if (LOAD_VIA_ROBOT )
 		USES_TERMINAL
 	)
 else()
-	#add_custom_target(
-	#	run ${atools}/teensy_reboot
-	#	COMMENT   "loading the code into the teensy board" VERBATIM USES_TERMINAL
-	#	WORKING_DIRECTORY "${atools}"
-	#)
+	add_custom_command(TARGET ${PROJECT_NAME}  POST_BUILD 
+		COMMAND cp   "${BUILD_DIR}/${PROJECT_NAME}.hex" /home/test/prog/donkey 
+		COMMAND /home/test/prog/donkey/donkey_load
+		COMMENT   "loading the code into the teensy board"
+		WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+		VERBATIM
+		USES_TERMINAL
+	)
 endif()
 
 

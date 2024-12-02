@@ -26,9 +26,18 @@ void Eye::slFrontObstacle(float distance) {
 	sfCounter += 1;
 }
 
+void Eye::onString(char* s) {
+	xmprintf(4, "Eye::onString(%s)", s);
+	if (eth) {
+		eth->do_write(s);
+	}
+}
+
 /// from eth thread
 void Eye::ethData(char* s, int size) {
 
+	s[size-1] = 0; // only for printf
+	xmprintf(3, "eye: %s\n", s);
 }
 
 /// from eth thread

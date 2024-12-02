@@ -43,6 +43,7 @@ unsigned char buf[rbSize];
 static ByteRoundBuf rb;
 
 static bool clientConnected = false;
+static bool consoleConnected = false;
 
 /// @brief this is a buffer for writing
 const int bufSize2 = 256;
@@ -93,6 +94,7 @@ void ethSetup() {
 	// start the Ethernet
 	xmprintf(1, "eth starting ....  ");
 	clientConnected = false;
+	consoleConnected = false;
 	uint8_t mac[6];
 	teensyMAC(mac);
 	xmprintf(17, "mac %s  ", macs);
@@ -160,6 +162,7 @@ void ethLoop(unsigned int now) {
 		ethStatus = sEthNoLink;
 		if (clientConnected) {
 			clientConnected = false;
+			consoleConnected = false;
 			xmprintf(1, "ETH client disconnected 3;  linkStatus = %d\r\n", linkStatus);
 			ledstripMode(lsEyeConnection, 128, 0x00000075);
 		}
@@ -174,6 +177,7 @@ void ethLoop(unsigned int now) {
 	if (!client) {
 		if (clientConnected) {
 			clientConnected = false;
+			consoleConnected = false;
 			xmprintf(1, "ETH client disconnected 2 \r\n");
 			ledstripMode(lsEyeConnection, 128, 0x00000075);
 		}
@@ -190,9 +194,10 @@ void ethLoop(unsigned int now) {
 			resetByteRoundBuf(&rb);
 			enableInterrupts(irq);
 			pings.clear();
-			xmprintf(1, "ETH client connected \r\n");
+			xmprintf(1, "ETH client connected! \r\n");
 		} else {
 			xmprintf(1, "ETH client disconnected \r\n");
+			consoleConnected = false;
 			//client.close();
 			client.stop();
 			if (infoHandler) {
@@ -218,11 +223,15 @@ void ethLoop(unsigned int now) {
 		if ((bs1 > 0)) {
 			lastIncomingInfoTime = now;
 			ledstripMode(lsEyeConnection, 128, 0x00007500);
-		 	if (strncmp(packetBuffer, "console", 7) == 0 ) {  //  console client connected
+			//xmprintf(1, "ethLoop(): got [%s] \r\n", packetBuffer);
+
+		 	if (!consoleConnected && strstr(packetBuffer, "console")) {  //  console client connected
+				consoleConnected = true;
+				xmprintf(1, "ethLoop(): got _console_ from eth client \r\n");
 				client.write("tee ", 4);
 			} else if (strncmp(packetBuffer, "ping", 4) == 0 ) {
-				
-			} else 	if (infoHandler) { 
+				//xmprintf(1, "ethLoop(): got ping from client \r\n");
+			} else 	if (infoHandler) { 											//  downloading the file
 				unsigned int pn;
 				if ((bs1 >= 16) && (memcmp(packetBuffer, "TBWF", 4) == 0)) { // teensy, please send next
 					memcpy(&pn, packetBuffer + 8, 4);
@@ -234,12 +243,12 @@ void ethLoop(unsigned int now) {
 					infoHandler(gfFinish, 0);
 				} else if (bs1 > 0) {
 					packetBuffer[maxPacketSize-1] = 0;	
-					xmprintf(2, "ETH: got %s\r\n", packetBuffer);
+					xmprintf(3, "ETH: got %s\r\n", packetBuffer);
 				}
 			} else { // just normal command
 				if ((bs1 >= 10) && (memcmp(packetBuffer, "XMR ", 4) == 0)) {
 					xqm::MsgHeader* h = (xqm::MsgHeader*)(packetBuffer);
-					xmprintf(1, "got message type %d; length = %d;  count = %d\r\n", h->type, h->length, h->count);
+					xmprintf(3, "got message type %d; length = %d;  count = %d\r\n", h->type, h->length, h->count);
 				} else {
 					int bs2 = (bs1 >= maxPacketSize) ? maxPacketSize-1 : bs1;
 					packetBuffer[bs2] = 0;

@@ -22,23 +22,6 @@ enum ControlMode {
 };
 ControlMode controlMode = defaultControlMode;
 
-struct RcvInfo {
-	int v = 0;
-	unsigned int timeMS = 0;
-	
-};
-
-RcvInfo rcvInfoRcv[rcc];
-RcvInfo rcvInfoCopy[rcc];
-
-enum RcvChannelState {
-	chUnknown,
-	chCalibration,
-	chYes,  //  working
-	chNo	// not working
-};
-RcvChannelState chState[rcc] = {chUnknown, chUnknown};
-
 static IntervalTimer intervalTimer;
 
 enum MotorMode {
@@ -53,27 +36,6 @@ enum MotorMode {
 
 PolyFilter<3> mpf;
 static MotorMode mMode = mmStop;
-
-/** transmitter steering callback.
- * this is called directly from receiver pin interrupt
- */
-void rcv_ch1(int v, unsigned int time) {
-	rcvInfoRcv[0].v = v;
-	rcvInfoRcv[0].timeMS = time;
-	//steering(val);
-	//xmprintf(3, "CH1\t v = %d; val = %d  \r\n", v, val);
-}
-
-/** transmitter gas callback
- * this is called directly from receiver pin interrupt.
- *  \param v from 0 to 180
- */
-void rcv_ch2(int v, unsigned int time) {
-	rcvInfoRcv[1].v = v;
-	rcvInfoRcv[1].timeMS = time;
-	//moveTheVehicle(val);
-	//xmprintf(3, "CH2\t v = %d; val = %d  \r\n", v, val);
-}
 
 volatile unsigned int fCounter = 0;
 void control100();
@@ -119,8 +81,6 @@ void controlSetup() {
 	xmprintf(1, "control setup ... .. ");
 	enableMotor(mmRunning_08);
 	//mpf.pfInit(ca3_08_50, cb3_08_50);
-	setReceiverUpdateCallback(rcv_ch1, 1);
-	setReceiverUpdateCallback(rcv_ch2, 2);
 
 	intervalTimer.priority(255);
 	intervalTimer.begin(intervalFunction, 10000);
@@ -137,15 +97,14 @@ void controlSetup() {
  * \param[in] now is the current time
 */
 void processReceiverState(unsigned int now) {
+	
+
 	int i;
 	//  copy receiver's values from its buffers 
-	bool irq = disableInterrupts();    //  FIXME: disable only receiver interrupt here..  check that receiver interrupt is higher priority that this code
-	memcpy(rcvInfoCopy, rcvInfoRcv, sizeof(RcvInfo) * rcc); // this is very fast
-	enableInterrupts(irq);
+
 	RcvChannelState chStateCopy[rcc];
 	for (i = 0; i < rcc; i++) {
 		if ((now <= rcvInfoCopy[i].timeMS) || ((now - rcvInfoCopy[i].timeMS) < 100)) {  // we got the measurements from the receiver right now
-
 			chStateCopy[i] = chYes;
 		} else {
 			chStateCopy[i] = chNo;
@@ -248,8 +207,8 @@ int wallDetector(int a, unsigned int timestamp) {
 	};
 	//xmprintf(17, "#");
 	if (wdCounter % 50 == 0) {
-		xmprintf(3, "wallDetector mcState=%d;  a = %d;  aa = %d;  us.quality = %d;  us.distance_mm = %d; minmax = %d; rObs=%d fObs=%d\r\n", 
-		mcState, a, aa, us.quality, us.distance_mm, minmax, rObs, fObs);
+		//xmprintf(3, "wallDetector mcState=%d;  a = %d;  aa = %d;  us.quality = %d;  us.distance_mm = %d; minmax = %d; rObs=%d fObs=%d\r\n", 
+		//	mcState, a, aa, us.quality, us.distance_mm, minmax, rObs, fObs);
 	}
 	ledstripMode(lsFrontObstacle, fObs);
 	ledstripMode(lsRearObstakle, rObs);
@@ -262,6 +221,7 @@ int wallDetector(int a, unsigned int timestamp) {
 		bb = std::lround(mpf.pfNext(aa));
 	}
 
+/*
 		xqm::Control100Info info;
 		info.a = a;
 		info.aa = aa;
@@ -280,13 +240,18 @@ int wallDetector(int a, unsigned int timestamp) {
 		info.us_timestamp2 = us2.measurementTimeMs;
 
 		lfSendMessage<xqm::Control100Info>(&info);
-
+*/
 	wdCounter += 1;
 	//xmprintf(17, "@");
 	return bb;
 }
 
 void controlFromTransmitter(unsigned int now) {
+	xqm::XQMData4 cInfo;
+	cInfo.id = 1;
+	cInfo.timestamp = now;
+	cInfo.data[0] = rcvInfoCopy[0].v;
+
 	steering(rcvInfoCopy[0].v);		// steering is on the first channel
 
 	int a = rcvInfoCopy[1].v;		//  throttle is on the second channel
@@ -300,7 +265,9 @@ void controlFromTransmitter(unsigned int now) {
 	//}
 	
 	//moveTheVehicle(rcvInfoCopy[1].v);
+	cInfo.data[1] = bb;
 	moveTheVehicle(bb);				//  send bb code (0 ~ 180) to the main motor
+	lfSendMessage<xqm::XQMData4>(&cInfo);
 	//xmprintf(17, "&");
 }
 
@@ -326,7 +293,8 @@ void control100() {
 	int bb;
 	unsigned int now = millis();
 
-	processReceiverState(now);								// copy info from inside receiver's buffers
+	rcvProcess(now);							// copy info from inside receiver's buffers
+	
 
 	ControlMode cMode = defaultControlMode;
 	if (chState[0] == chYes && chState[1] == chYes) {		//  transmittre is ON
@@ -349,13 +317,14 @@ void control100() {
 		break;
 	};
 
-	controlIsWorkingNow = 0;
+	
 	controlCounter += 1;
 	if (controlCounter  % 50 == 0) {
 		if (printReceiverValues ) {
 			xmprintf(3, "rcv: [%d, %d]  \r\n", rcvInfoCopy[0].v, rcvInfoCopy[1].v); //  printing receiver codes
 		}
 	}
+	controlIsWorkingNow = 0;
 	//xmprintf(17, "#");
 }
 
