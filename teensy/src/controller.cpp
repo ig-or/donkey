@@ -15,6 +15,7 @@
 
 
 #include <cstring>
+#include <atomic>
 
 enum ControlMode {
 	defaultControlMode,
@@ -89,34 +90,6 @@ void controlSetup() {
 	xmprintf(17, "... .. OK \r\n");
 }
 
-/**
- * copy info from inside receiver interrups space and 
- * also decide if receiver/transmitter channels are workign or not.
- * 
- * put info into chState and rcvInfoCopy.
- * \param[in] now is the current time
-*/
-void processReceiverState(unsigned int now) {
-	
-
-	int i;
-	//  copy receiver's values from its buffers 
-
-	RcvChannelState chStateCopy[rcc];
-	for (i = 0; i < rcc; i++) {
-		if ((now <= rcvInfoCopy[i].timeMS) || ((now - rcvInfoCopy[i].timeMS) < 100)) {  // we got the measurements from the receiver right now
-			chStateCopy[i] = chYes;
-		} else {
-			chStateCopy[i] = chNo;
-		}
-		if (chStateCopy[i] != chState[i]) {
-			chState[i] = chStateCopy[i];
-			xmprintf(3, "receiver channel %d %s \r\n", i, chState[i] == chYes ? "working" : "stopped");
-		}
-	}
-}
-
-
 void enableMotor(int u) {
 	bool irq = disableInterrupts();
 	mMode = static_cast<MotorMode>(u);
@@ -133,6 +106,7 @@ void enableMotor(int u) {
 
 bool veloLimit = false;
 static unsigned char wdCounter = 0;
+
 /**
  * 
  * \param a the speed, from 0 to 180.  90 is stop.  
@@ -247,14 +221,15 @@ int wallDetector(int a, unsigned int timestamp) {
 }
 
 void controlFromTransmitter(unsigned int now) {
-	xqm::XQMData4 cInfo;
+	xqm::XQMData8 cInfo;
 	cInfo.id = 1;
 	cInfo.timestamp = now;
-	cInfo.data[0] = rcvInfoCopy[0].v;
+	cInfo.data[0] = ri[0].cch;
+	cInfo.data[1] = ri[0].v;
 
-	steering(rcvInfoCopy[0].v);		// steering is on the first channel
+	steering(ri[0].v);				// steering is on the first channel
 
-	int a = rcvInfoCopy[1].v;		//  throttle is on the second channel
+	int a = ri[1].v;		//  throttle is on the second channel
 	if (a < 0) { a = 0; }
 	if (a > 179) { a = 179; }
 	int bb = wallDetector(a, now);
@@ -265,14 +240,17 @@ void controlFromTransmitter(unsigned int now) {
 	//}
 	
 	//moveTheVehicle(rcvInfoCopy[1].v);
-	cInfo.data[1] = bb;
+	cInfo.data[7] = bb;
+	cInfo.data[6] = a;
+	cInfo.data[5] = ri[1].v;
+	cInfo.data[4] = ri[1].cch;
 	moveTheVehicle(bb);				//  send bb code (0 ~ 180) to the main motor
-	lfSendMessage<xqm::XQMData4>(&cInfo);
+	lfSendMessage<xqm::XQMData8>(&cInfo);
 	//xmprintf(17, "&");
 }
 
 static unsigned int controlCounter = 0;
-volatile char controlIsWorkingNow = false; //  FIXME: make std::atomic variable here
+std::atomic<char> controlIsWorkingNow = 0; 
 static bool printReceiverValues = false;
 
 static int mSpeed = 90.0; // zeroRate;
@@ -297,7 +275,7 @@ void control100() {
 	
 
 	ControlMode cMode = defaultControlMode;
-	if (chState[0] == chYes && chState[1] == chYes) {		//  transmittre is ON
+	if (ri[0].chState == chYes && ri[1].chState == chYes) {		//  transmittre is ON
 		cMode = controlModeFromTransmitter;
 	}
 	if (controlMode != cMode) {  							//   control mode changed
@@ -321,7 +299,7 @@ void control100() {
 	controlCounter += 1;
 	if (controlCounter  % 50 == 0) {
 		if (printReceiverValues ) {
-			xmprintf(3, "rcv: [%d, %d]  \r\n", rcvInfoCopy[0].v, rcvInfoCopy[1].v); //  printing receiver codes
+			xmprintf(3, "rcv: [%d, %d]  \r\n", ri[0].v, ri[1].v); //  printing receiver codes
 		}
 	}
 	controlIsWorkingNow = 0;
@@ -330,8 +308,8 @@ void control100() {
 
 void controlPrint() {
 	xmprintf(3, "control100(%u)  controlFromTransmitter: %s; rcv: [%d, %d]  \r\n", 
-		controlCounter, (chState[0] == chYes && chState[1] == chYes) ? "yes" : "no",
-		rcvInfoCopy[0].v, rcvInfoCopy[1].v);
+		controlCounter, (ri[0].chState == chYes && ri[1].chState == chYes) ? "yes" : "no",
+		ri[0].v, ri[1].v);
 }
 void cPrintRcvInfo(bool print) {
 	printReceiverValues = print;

@@ -1,13 +1,16 @@
+/// (control radio) receiver interface
 
 #pragma once
 
 #include "xmfilter.h"
 
+/// @brief how to calibrate the receiver channels
 enum ChCalibrationMethod {
 	rcNoCalibration,
 	rcCalibrationOnlyZero,
 	rcFullCalibration
 };
+
 /**
  * state of the calibration status for receiver channel.
 */
@@ -62,7 +65,7 @@ struct RcvInfo {
 	RcvChannelState chState = chUnknown;
 
 	unsigned int prevCchTime = 0;
-	RCHCalibration chCalibration;
+	RCHCalibration calibration;
 	int deadBand = 0;
 	int rangeMinMks = 0;
 	int rangeZeroMks = 0;
@@ -85,12 +88,7 @@ struct RcvInfo {
 
 const int rcc = 2; ///< receiver channel count
 
-/**
- * a receiver callback function.
- * \param v the value from 0 (minMks) to 180 (maxMks)
- * \param time measurement time in milliseconds
-*/
-typedef void (*recvChangeT)(int, unsigned int);
+extern RcvInfo ri[rcc];
 
 void receiverSetup();
 void receiverPrint();

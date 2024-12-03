@@ -117,7 +117,7 @@ int processTheCommand(const char* s, int size) {
 		cPrintRcvInfo(true);
 	}
 	else if (strcmp(s, "rcalib") == 0) {			//  start receiver calibration
-		startReceiverCalibrate();
+		//startReceiverCalibrate();
 	} 
 
 

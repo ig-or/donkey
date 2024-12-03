@@ -46,7 +46,7 @@ void RCHCalibration::calibrationFailed() {
 	cState = rcNo;
 }
 void RCHCalibration::zeroCalibrationComplete() {
-	ledstripMode(lsManualControl, 128, 0x00007500);
+	//ledstripMode(lsManualControl, 128, 0x00007500);
 //	xmprintf(3, "zero calibration completed \r\n");
 	cState = rcComplete;
 }
@@ -74,12 +74,12 @@ void RcvInfo::rchUpdate(unsigned int now) {
 		}
 		if (cchTime + 500 > now) {
 			chState = chCalibration;
-			chCalibration.startReceiverChannelCalibration(cchTime);
+			calibration.startReceiverChannelCalibration(cchTime);
 			ledstripMode(lsManualControl, 128, 0x00000075);
 			xmprintf(3, "RcvInfo::rchUpdate()   receiver channel %d started calibration \r\n", chID);
 		}
 		break;
-	case 	chCalibration 
+	case 	chCalibration:
 		if (cchTime + 400 < now) {
 			chState = chUnknown;
 			xmprintf(3, "RcvInfo::rchUpdate()   receiver channel %d stopped (calibration failed)\r\n", chID);
@@ -190,15 +190,15 @@ static const int rcInterval = 50;
 
 void calibrationFailed() {
 	RcvInfo& i = ri[1]; //  motor channel
-	i.chCalibration.calibrationFailed();
+	i.calibration.calibrationFailed();
 }
 
 void RcvInfo::processCalibration(unsigned int now) {
-	CalibrationState& cState = chCalibration.cState;
+	CalibrationState& cState = calibration.cState;
 	if ((cState == rcNo) || (cState == rcComplete)) {
 		return;
 	}
-	RCHCalibration& c = chCalibration;
+	RCHCalibration& c = calibration;
 
 	if ((now - c.calibrationDataTimeMs) < rcInterval) { 	// not so fast
 		return;
@@ -222,6 +222,7 @@ void RcvInfo::processCalibration(unsigned int now) {
 					c.zeroCalibrationComplete();
 					setupRange(rangeMinMks, rangeMaxMks, c.rccInfo.center);
 					chState = chYes;
+					ledstripMode(lsManualControl, 128, 0x00007500);
 					xmprintf(3, "zero calibration ch %d completed [%d - %d - %d]\r\n", chID, rangeMinMks, rangeZeroMks, rangeMaxMks);
 					break;
 				} else {
