@@ -38,7 +38,7 @@ struct TTime {
 /**
  *  dst    	bit0 = 1    send to USB
  * 			bit1 = 1    send to Ethernet
- * 			bit4 = 1    scip printing 'header' ( 16) 
+ * 			bit4 = 1    skip printing 'header' ( 16) 
  * */
 int xmprintf(int dst, const char* s, ...);
 

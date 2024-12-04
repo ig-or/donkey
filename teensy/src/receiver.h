@@ -58,7 +58,9 @@ struct RCHCalibration {
 struct RcvInfo {
 	long wch = 0;						/// copy of the ReceiverChannel
 	long cch = 0;						/// copy of the ReceiverChannel
+	float fcch;
 	unsigned int cchTime = 0;			/// copy of the ReceiverChannel
+	unsigned char rUpdate = 0;
 
 	int chID = 0;						/// > 0
 	int v = 0;							/// value scaled from 0 to 180
@@ -67,12 +69,14 @@ struct RcvInfo {
 	unsigned int prevCchTime = 0;
 	RCHCalibration calibration;
 	int deadBand = 0;
-	int rangeMinMks = 0;
-	int rangeZeroMks = 0;
-	int rangeMaxMks = 0;
+
+	static const int vhSize = 5;
+	float vh[vhSize];
+	float vhCopy[vhSize];
 
 	/// @brief update everything based on wch, cch and cchTime info.
 	void rchUpdate(unsigned int now);
+	void riSetup(int id);
 		/**
 	 * setup receiver changing range 
 	*/

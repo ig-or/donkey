@@ -248,7 +248,7 @@ void ethLoop(unsigned int now) {
 			} else { // just normal command
 				if ((bs1 >= 10) && (memcmp(packetBuffer, "XMR ", 4) == 0)) {
 					xqm::MsgHeader* h = (xqm::MsgHeader*)(packetBuffer);
-					xmprintf(3, "got message type %d; length = %d;  count = %d\r\n", h->type, h->length, h->count);
+					//xmprintf(3, "got message type %d; length = %d;  count = %d\r\n", h->type, h->length, h->count);
 				} else {
 					int bs2 = (bs1 >= maxPacketSize) ? maxPacketSize-1 : bs1;
 					packetBuffer[bs2] = 0;

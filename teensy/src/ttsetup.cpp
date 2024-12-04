@@ -52,7 +52,7 @@ int ttSetup() {
 	// switch/button
 	pinMode(switchPin, INPUT);
 
-	NVIC_SET_PRIORITY(IRQ_GPIO6789, 30);  //  setup high priiority on all IO pins
+	NVIC_SET_PRIORITY(IRQ_GPIO6789, 54);  //  setup high priiority on all IO pins; should not be below 32!!
 	
 	return 0;
 }

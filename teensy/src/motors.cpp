@@ -158,7 +158,6 @@ void steering(int angle) {
 	steeringCounter += 1;
 }
 
-
 /**
  * \param a the speed, from 0 to 180.  90 is stop.
 */

@@ -36,6 +36,7 @@ enum MotorMode {
 };
 
 PolyFilter<3> mpf;
+PolyFilter<3> spf;
 static MotorMode mMode = mmStop;
 
 volatile unsigned int fCounter = 0;
@@ -101,6 +102,7 @@ void enableMotor(int u) {
 		case mmShiftTest:   mpf.pfInit(ca3_08_50, cb3_08_50);	 break; 	
 	};
 	//mpf.pfNext(zeroRate);
+	spf.pfInit(ca3_25_50, cb3_25_50);	 	//  cut off 0.5 Hz and sampling rate = 50 HZ
 	enableInterrupts(irq);
 }
 
@@ -224,27 +226,37 @@ void controlFromTransmitter(unsigned int now) {
 	xqm::XQMData8 cInfo;
 	cInfo.id = 1;
 	cInfo.timestamp = now;
-	cInfo.data[0] = ri[0].cch;
-	cInfo.data[1] = ri[0].v;
+	if (ri[0].rUpdate != 0) {
+		int x = ri[0].v;
+		cInfo.data[0] = ri[0].cch;
+		cInfo.data[1] = ri[0].v;
+		if (x > 180) x = 180;
+		if (x < 0) x = 0;
 
-	steering(ri[0].v);				// steering is on the first channel
+		long bb = std::lround(spf.pfNext(x));
+		steering(bb);				// steering is on the first channel
+	}
 
-	int a = ri[1].v;		//  throttle is on the second channel
-	if (a < 0) { a = 0; }
-	if (a > 179) { a = 179; }
-	int bb = wallDetector(a, now);
-	//xmprintf(17, "^");
-	//if ((a != bb) != veloLimit) {
-	//	veloLimit = a != bb;
-		//xmprintf(3, "veloLimit %s \r\n", veloLimit ? "start" : "stop");
-	//}
-	
-	//moveTheVehicle(rcvInfoCopy[1].v);
-	cInfo.data[7] = bb;
-	cInfo.data[6] = a;
-	cInfo.data[5] = ri[1].v;
-	cInfo.data[4] = ri[1].cch;
-	moveTheVehicle(bb);				//  send bb code (0 ~ 180) to the main motor
+	if (ri[1].rUpdate != 0) {
+		int a = ri[1].v;		//  throttle is on the second channel
+		if (a < 0) { a = 0; }
+		if (a > 179) { a = 179; }
+		int bb = wallDetector(a, now);
+		//int bb = a;
+
+		//xmprintf(17, "^");
+		//if ((a != bb) != veloLimit) {
+		//	veloLimit = a != bb;
+			//xmprintf(3, "veloLimit %s \r\n", veloLimit ? "start" : "stop");
+		//}
+		
+		//moveTheVehicle(rcvInfoCopy[1].v);
+		cInfo.data[7] = bb;
+		cInfo.data[6] = a;
+		cInfo.data[5] = ri[1].v;
+		cInfo.data[4] = ri[1].cch;
+		moveTheVehicle(bb);				//  send bb code (0 ~ 180) to the main motor
+	}
 	lfSendMessage<xqm::XQMData8>(&cInfo);
 	//xmprintf(17, "&");
 }
@@ -299,7 +311,7 @@ void control100() {
 	controlCounter += 1;
 	if (controlCounter  % 50 == 0) {
 		if (printReceiverValues ) {
-			xmprintf(3, "rcv: [%d, %d]  \r\n", ri[0].v, ri[1].v); //  printing receiver codes
+			xmprintf(3, "rcv: steering: %d -> %d; motor: %d -> %d  \r\n", ri[0].cch, ri[0].v, ri[1].cch, ri[1].v); //  printing receiver codes
 		}
 	}
 	controlIsWorkingNow = 0;
