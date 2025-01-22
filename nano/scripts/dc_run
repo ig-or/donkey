@@ -1,0 +1,5 @@
+#!/bin/bash
+# this runs the docker container from the image, 
+#   mounting /home/test/space, with access to all the hardware and network and argus_socket
+# first parameter is the name of the new container, second is the image ID
+docker run -it --network=host -v  /home/test/space:/mnt/space  --name $1 --privileged   --runtime nvidia  -v /tmp/.X11-unix:/tmp/.X11-unix     -v /tmp/argus_socket:/tmp/argus_socket   -e DISPLAY=$DISPLAY $2
